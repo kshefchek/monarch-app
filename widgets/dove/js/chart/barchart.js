@@ -9,7 +9,7 @@
 if (typeof monarch == 'undefined') { var monarch = {};}
 if (typeof monarch.chart == 'undefined') { monarch.chart = {};}
 
-monarch.chart.barchart = function(config, html_div){
+monarch.chart.barchart = function(config, html_div, svg_class){
     var self = this;
 
     //Define scales
@@ -41,12 +41,9 @@ monarch.chart.barchart = function(config, html_div){
         .scale(self.y0)
         .orient("left");
 
-    self.svg = d3.select(html_div).append("svg")
-        .attr("class", "barchart")
-        .attr("width", config.width + config.margin.left + config.margin.right)
-        .attr("height", config.height + config.margin.top + config.margin.bottom)
-        .append("g")
-        .attr("transform", "translate(" + config.margin.left + "," + config.margin.top + ")");
+    // Selects the g element for the entire chart, 
+    // the direct child of the svg element
+    self.svg = d3.select(html_div).select('.'+svg_class).select('g');
 };
 
 monarch.chart.barchart.prototype.setXTicks = function(config) {

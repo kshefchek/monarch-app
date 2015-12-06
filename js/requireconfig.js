@@ -27,7 +27,7 @@ require(['require', 'jquery'], function (_require, _jquery) {
             _require(['/monarch-common.js', '/monarch.js'], function () {
                 _require(['/search_form.js', '/monarch-tabs.js',
                          '/jquery.cookie.js', '/jquery.xml2json.js', '/HomePage.js', '/stupidtable.min.js', '/tables.js',
-                         '/dove.min.js', '/golr-table.js'], function () {
+                         '/dove.js', '/golr-table.js'], function () {
                     _require(['/barchart-launcher.js'], function (bl) {
                         loader();
                     });

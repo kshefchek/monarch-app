@@ -57,8 +57,9 @@ monarch.dovechart = function(config, tree, html_div, tree_builder){
         var data = tree.getFirstSiblings();
         data = self.sortDataByGroupCount(data);
         self.groups = self.getGroups(data);
-        self.makeGraphDOM(html_div, data); 
-        var histogram = new monarch.chart.barchart(config, html_div);
+        var svg_class = "chart";
+        self.makeGraphDOM(html_div, data, svg_class); 
+        var histogram = new monarch.chart.barchart(config, html_div, svg_class);
         var isFirstGraph = true;
         self.drawGraph(histogram, false, undefined, isFirstGraph);
     };
@@ -67,7 +68,7 @@ monarch.dovechart = function(config, tree, html_div, tree_builder){
 };
 
 //Uses JQuery to create the DOM for the dovechart
-monarch.dovechart.prototype.makeGraphDOM = function(html_div, data){
+monarch.dovechart.prototype.makeGraphDOM = function(html_div, data, svg_class){
       var self = this;
       var config = self.config;
       var groups = self.groups;
@@ -138,6 +139,15 @@ monarch.dovechart.prototype.makeGraphDOM = function(html_div, data){
                           "<div class='fetching'>Fetching Data...</div></div>" +
                           "<div class='error-msg'>Error Fetching Data</div>" +
                           "<div class='leaf-msg'></div>");
+      
+      d3.select(html_div).append("svg")
+          .attr("class", svg_class)
+          .attr("width", config.width + config.margin.left + config.margin.right)
+          .attr("height", config.height + config.margin.top + config.margin.bottom)
+          .append("g")
+          .attr("transform", "translate(" + config.margin.left + "," + config.margin.top + ")");
+      
+      
       //jQuery(".ajax-spinner").show();
       //Update tooltip positioning
       if (!config.useCrumb && groups.length>1){
@@ -177,7 +187,8 @@ monarch.dovechart.prototype.makeLegend = function(histogram, barGroup){
     var data = self.tree.getDescendants(self.parents);
     
     //Set legend
-    var legend = histogram.svg.selectAll(".barchart")
+    //TODO we can get to this by simply selecting .chart
+    var legend = histogram.svg.selectAll(".chart")
        .data(self.groups.slice())
        .enter().append("g")
        .attr("class", function(d) {return "legend-"+d; })
@@ -315,7 +326,7 @@ monarch.dovechart.prototype.removeSVGWithSelection = function(select, duration, 
 };
 
 monarch.dovechart.prototype.removeSVGWithClass = function(histogram, htmlClass, duration, y, opacity){
-    d3.select(self.html_div+'.barchart').selectAll(htmlClass).transition()
+    d3.select(self.html_div+' .chart').selectAll(htmlClass).transition()
         .duration(duration)
         .attr("y", y)
         .style("fill-opacity", opacity)
@@ -323,7 +334,7 @@ monarch.dovechart.prototype.removeSVGWithClass = function(histogram, htmlClass, 
 };
 
 monarch.dovechart.prototype.removeRectInGroup = function(histogram, barGroup, duration, y, opacity){
-    d3.select(self.html_div+'.barchart').selectAll(barGroup).selectAll("rect").transition()
+    d3.select(self.html_div+' .chart').selectAll(barGroup).selectAll("rect").transition()
         .duration(duration)
         .attr("y", y)
         .style("fill-opacity", opacity)
@@ -620,7 +631,7 @@ monarch.dovechart.prototype.transitionStacked = function (histogram, data, group
     })
 };
 
-monarch.dovechart.prototype.drawGraph = function (histogram, isFromCrumb, parent, isFirstGraph, isFromResize) {
+monarch.dovechart.prototype.drawGraph = function (histogram, isFromCrumb, parent, isFirstGraph) {
     var self = this;
     var config = self.config;
     
@@ -636,35 +647,20 @@ monarch.dovechart.prototype.drawGraph = function (histogram, isFromCrumb, parent
     if (!isFromCrumb){
         data = self.addEllipsisToLabel(data,config.maxLabelSize);
     }
-    
-    // Some updates to dynamically increase the size of the graph
-    // This is a bit hacky and needs refactoring
-    // To fix we need to remove the svg selection in 
-    // barchart.js (this should be decoupled and added in this class instead)
+
     if (data.length > 25 && self.config.height == self.config.initialHeight){
         self.config.height = data.length * 14.05;
-        jQuery(self.html_div + ' .barchart').remove();
-        histogram = new monarch.chart.barchart(self.config, self.html_div);
-        self.drawGraph(histogram, isFromCrumb, undefined, false, true);
-        return;
-    } else if (data.length > 25 && self.config.height != self.config.initialHeight && !isFromResize){
+        var bar = self.config.height + config.margin.top + config.margin.bottom
+        d3.select(self.html_div+' .chart')
+            .attr("height", self.config.height + config.margin.top + config.margin.bottom);
+    } else if (data.length > 25 && self.config.height != self.config.initialHeight){
         self.config.height = data.length * 14.05;
-        jQuery(self.html_div + ' .barchart').remove();
-        histogram = new monarch.chart.barchart(self.config, self.html_div);
-        self.drawGraph(histogram, isFromCrumb, undefined, false, true);
-        return;
+        d3.select(self.html_div+' .chart')
+            .attr("height", self.config.height + config.margin.top + config.margin.bottom);
     } else if (data.length <= 25 && self.config.height != self.config.initialHeight ) {
         self.config.height = self.config.initialHeight;
-        jQuery(self.html_div + ' .barchart').remove();
-        histogram = new monarch.chart.barchart(self.config, self.html_div);
-        self.drawGraph(histogram, isFromCrumb, undefined, false, true);
-        return;
-    } else if (isFromCrumb && !isFromResize) {
-        self.config.height = self.config.initialHeight;
-        jQuery(self.html_div + ' .barchart').remove();
-        histogram = new monarch.chart.barchart(self.config, self.html_div);
-        self.drawGraph(histogram, isFromCrumb, undefined, false, true);
-        return;
+        d3.select(self.html_div+' .chart')
+            .attr("height", self.config.height + config.margin.top + config.margin.bottom);
     }
     
     data = self.getStackedStats(data);
@@ -693,7 +689,7 @@ monarch.dovechart.prototype.drawGraph = function (histogram, isFromCrumb, parent
     self.changeScalePerSettings(histogram);
     
     self.setXYDomains(histogram, data, self.groups);
-    if (isFirstGraph || isFromResize){
+    if (isFirstGraph){
         histogram.setXTicks(config).setYTicks();
     }
 
@@ -708,11 +704,11 @@ monarch.dovechart.prototype.drawGraph = function (histogram, isFromCrumb, parent
     // showTransition controls if a new view results in bars expanding
     // from zero to their respective positions
     var showTransition = false;
-    if (isFirstGraph || isFromCrumb) {
+    if (isFirstGraph) {
         showTransition = true;
     }
     //Make legend
-    if (isFirstGraph || isFromResize || isFromCrumb){
+    if (isFirstGraph){
         //Create legend
         if (config.useLegend){
             self.makeLegend(histogram, barGroup);
@@ -736,7 +732,7 @@ monarch.dovechart.prototype.drawGraph = function (histogram, isFromCrumb, parent
     //histogram.svg.selectAll("polygon.wedge").remove();
     
     //Make first breadcrumb
-    if (config.useCrumb && isFirstGraph && !isFromResize){
+    if (config.useCrumb && isFirstGraph){
         self.makeBreadcrumb(histogram,self.tree.getRootLabel(),
                                  self.groups,bar,barGroup);
     }
@@ -835,7 +831,7 @@ monarch.dovechart.prototype.pickUpBreadcrumb = function(histogram, index, groups
     // parentLen is greater than the number of elements remaining, but that's OK with splice()
     self.parents.splice(index + 1,(parentLen));
 
-    d3.select(self.html_div+'.barchart').selectAll(".tick").remove();
+    d3.select(self.html_div+' .chart').selectAll(".tick").remove();
     self.drawGraph(histogram,isFromCrumb);
 
     for (var i=(index+1); i <= parentLen; i++){
@@ -2362,7 +2358,7 @@ monarch.builder.tree_builder.prototype.getDefaultConfig = function(){
 if (typeof monarch == 'undefined') { var monarch = {};}
 if (typeof monarch.chart == 'undefined') { monarch.chart = {};}
 
-monarch.chart.barchart = function(config, html_div){
+monarch.chart.barchart = function(config, html_div, svg_class){
     var self = this;
 
     //Define scales
@@ -2394,12 +2390,9 @@ monarch.chart.barchart = function(config, html_div){
         .scale(self.y0)
         .orient("left");
 
-    self.svg = d3.select(html_div).append("svg")
-        .attr("class", "barchart")
-        .attr("width", config.width + config.margin.left + config.margin.right)
-        .attr("height", config.height + config.margin.top + config.margin.bottom)
-        .append("g")
-        .attr("transform", "translate(" + config.margin.left + "," + config.margin.top + ")");
+    // Selects the g element for the entire chart, 
+    // the direct child of the svg element
+    self.svg = d3.select(html_div).select('.'+svg_class).select('g');
 };
 
 monarch.chart.barchart.prototype.setXTicks = function(config) {
