@@ -17,7 +17,7 @@ if ( typeof dove.version == "undefined" ){ dove.version = {}; }
  * Partial version for this library; revision (major/minor version numbers)
  * information.
  */
-dove.version.revision = "1.0.0~";
+dove.version.revision = "1.0.0";
 
 /*
  * Variable: release

@@ -390,8 +390,8 @@ monarch.dovechart.prototype.displayCountTip = function(tooltip, value, name, d3S
 };
 
 
-
 monarch.dovechart.prototype.setXYDomains = function (histogram, data, groups) {
+    //This function could be moved the barchart class
     var self = this;
     //Set y0 domain
     // TODO remove groups arg in favor of generating this dynamically
@@ -421,10 +421,14 @@ monarch.dovechart.prototype.makeBar = function (barGroup, histogram, barLayout, 
     var config = self.config;
     //Class for each svg rectangle element
     var htmlClass = "rect" + self.level;
+    var scale = 'linear';
+    if ( jQuery(self.html_div + ' input[name=scale]:checked').val() === 'log' ) {
+        scale = 'log';
+    }
     
     //Create bars 
     if (barLayout == 'grouped'){
-        bar = histogram.makeHorizontalGroupedBars(barGroup, htmlClass);
+        bar = histogram.makeHorizontalGroupedBars(barGroup, htmlClass, scale);
         
         //Mouseover/out events
         bar.on("mouseover", function(d){
@@ -440,15 +444,8 @@ monarch.dovechart.prototype.makeBar = function (barGroup, histogram, barLayout, 
           .style("fill", function(d) { return histogram.color(d.name); });
         
         if (isFirstGraph){
+            bar.attr("width", 0);
             self.transitionFromZero(bar,histogram,barLayout);
-        } else {
-            bar.attr("width", function(d) { 
-                if (( jQuery(self.html_div + ' input[name=scale]:checked').val() === 'log' )
-                        && ( d.value == 0 )){
-                  return 1;
-              } else {
-                  return histogram.x(d.value); 
-              }});
         }
         
     } else if (barLayout == 'stacked') {
@@ -468,25 +465,9 @@ monarch.dovechart.prototype.makeBar = function (barGroup, histogram, barLayout, 
           .style("fill", function(d) { return histogram.color(d.name); });
         
         if (isFirstGraph){
+            bar.attr("width", 0)
+                .attr("x", 1);
             self.transitionFromZero(bar,histogram,barLayout);
-        } else {
-            bar.attr("x", function(d){
-                if (d.x0 == 0){
-                    return 1;
-                } else { 
-                  return histogram.x(d.x0);
-                } 
-            })
-                .attr("width", function(d) { 
-                    if (d.x0 == 0 && d.x1 != 0){
-                        return histogram.x(d.x1); 
-                    } else if (( jQuery(self.html_div + ' input[name=scale]:checked').val() === 'log' ) &&
-                            ( histogram.x(d.x1) - histogram.x(d.x0) == 0 )){
-                        return 1;  
-                    } else {
-                        return histogram.x(d.x1) - histogram.x(d.x0); 
-                    }
-                });
         }
     }
     return bar;
@@ -499,6 +480,8 @@ monarch.dovechart.prototype.transitionFromZero = function (bar, histogram, barLa
         bar.transition()
         .duration(800)
         .delay(function(d, i, j) { return j * 20; })
+        // Note theres some duplication of code here and in
+        // barchart.makeHorizontalGroupedBars
         .attr("x", 1)
         .attr("width", function(d) { 
         if (( jQuery(self.html_div + ' input[name=scale]:checked').val() === 'log' )
@@ -512,6 +495,8 @@ monarch.dovechart.prototype.transitionFromZero = function (bar, histogram, barLa
         bar.transition()
         .duration(800)
         .delay(function(d, i, j) { return j * 20; })
+        // Note theres some duplication of code here and in
+        // barchart.makeHorizontalStackedBars
         .attr("x", function(d){
             if (d.x0 == 0){
                 return 1;

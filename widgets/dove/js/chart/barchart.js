@@ -31,7 +31,7 @@ monarch.chart.barchart.prototype = Object.create(monarch.chart.prototype);
  * 
  * Returns d3.selection
  */
-monarch.chart.barchart.prototype.makeHorizontalGroupedBars = function(barGroup, htmlClass) {
+monarch.chart.barchart.prototype.makeHorizontalGroupedBars = function(barGroup, htmlClass, scale) {
     var self = this;
     
     //The g elements do not yet exists, selectAll creates
@@ -43,7 +43,13 @@ monarch.chart.barchart.prototype.makeHorizontalGroupedBars = function(barGroup, 
         .attr("height", self.y1.rangeBand())
         .attr("y", function(d) { return self.y1(d.name); })
         .attr("x", 1)
-        .attr("width", 0);
+        .attr("width", function(d) { 
+            if ((scale === 'log' ) && ( d.value == 0 )){
+              return 1;
+            } else {
+              return self.x(d.value); 
+            }
+         });
     
     return barSelection;
 };
@@ -57,7 +63,7 @@ monarch.chart.barchart.prototype.makeHorizontalGroupedBars = function(barGroup, 
  * 
  * Returns d3.selection
  */
-monarch.chart.barchart.prototype.makeHorizontalStackedBars = function(barGroup, htmlClass) {
+monarch.chart.barchart.prototype.makeHorizontalStackedBars = function(barGroup, htmlClass, scale) {
     var self = this;
     
     //The g elements do not yet exists, selectAll creates
@@ -66,10 +72,25 @@ monarch.chart.barchart.prototype.makeHorizontalStackedBars = function(barGroup, 
         .data(function(d) { return d.counts; })
           .enter().append("rect")
           .attr("class", htmlClass)
-          .attr("x", 1)
-          .attr("width", 0)
           .attr("height", self.y0.rangeBand())
-          .attr("y", function(d) { return self.y1(d.name); });
+          .attr("y", function(d) { return self.y1(d.name); })
+          .attr("x", function(d){
+                if (d.x0 == 0){
+                    return 1;
+                } else { 
+                  return self.x(d.x0);
+                } 
+           })
+           .attr("width", function(d) { 
+               if (d.x0 == 0 && d.x1 != 0){
+                   return self.x(d.x1); 
+               } else if ( ( scale === 'log' ) 
+                       && ( histogram.x(d.x1) - histogram.x(d.x0) == 0 )) {
+                   return 1;  
+               } else {
+                   return self.x(d.x1) - self.x(d.x0); 
+               }
+           });
     
     return barSelection;
 };
