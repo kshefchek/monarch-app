@@ -1,4 +1,5 @@
 ./widgets/dove/js/dovechart.js
 ./widgets/dove/js/model/tree.js
 ./widgets/dove/js/builder/tree_builder.js
+./widgets/dove/js/chart.js
 ./widgets/dove/js/chart/barchart.js

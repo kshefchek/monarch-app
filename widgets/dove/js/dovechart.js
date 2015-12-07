@@ -187,10 +187,12 @@ monarch.dovechart.prototype.makeLegend = function(histogram, barGroup){
     var data = self.tree.getDescendants(self.parents);
     
     //Set legend
-    //TODO we can get to this by simply selecting .chart
-    var legend = histogram.svg.selectAll(".chart")
+    // The legend (g) elements do not yet exist,
+    // selectAll creates a place holder
+    var legend = histogram.svg.selectAll('.legend')
        .data(self.groups.slice())
        .enter().append("g")
+       .attr("class", "legend")
        .attr("class", function(d) {return "legend-"+d; })
        .style("opacity", function(d) {
            if (self.config.category_filter_list.indexOf(d) > -1) {
@@ -387,21 +389,7 @@ monarch.dovechart.prototype.displayCountTip = function(tooltip, value, name, d3S
     }
 };
 
-monarch.dovechart.prototype.setGroupPositioning = function (histogram, data) {
-    var self = this;
 
-    var groupPos = histogram.svg.selectAll()
-       .data(data)
-       .enter().append("svg:g")
-       .attr("class", ("bar"+self.level))
-       .attr("transform", function(d) { return "translate(0," + histogram.y0(d.id) + ")"; })
-       .on("click", function(d){
-           if (self.config.isYLabelURL){
-               document.location.href = self.config.yLabelBaseURL + d.id;
-           }
-       });
-    return groupPos;
-};
 
 monarch.dovechart.prototype.setXYDomains = function (histogram, data, groups) {
     var self = this;
@@ -431,18 +419,15 @@ monarch.dovechart.prototype.makeBar = function (barGroup, histogram, barLayout, 
     var bar;
     var self = this;
     var config = self.config;
+    //Class for each svg rectangle element
+    var htmlClass = "rect" + self.level;
     
     //Create bars 
     if (barLayout == 'grouped'){
-        bar = barGroup.selectAll("g")
-          .data(function(d) { return d.counts; })
-          .enter().append("rect")
-          .attr("class",("rect"+self.level))
-          .attr("height", histogram.y1.rangeBand())
-          .attr("y", function(d) { return histogram.y1(d.name); })
-          .attr("x", 1)
-          .attr("width", 0)
-          .on("mouseover", function(d){
+        bar = histogram.makeHorizontalGroupedBars(barGroup, htmlClass);
+        
+        //Mouseover/out events
+        bar.on("mouseover", function(d){
             d3.select(this)
               .style("fill", config.color.bar.fill);
               self.displayCountTip(self.tooltip, d.value, d.name, this, 'grouped');
@@ -467,15 +452,9 @@ monarch.dovechart.prototype.makeBar = function (barGroup, histogram, barLayout, 
         }
         
     } else if (barLayout == 'stacked') {
-        bar = barGroup.selectAll("g")
-          .data(function(d) { return d.counts; })
-          .enter().append("rect")
-          .attr("class",("rect"+self.level))
-          .attr("x", 1)
-          .attr("width", 0)
-          .attr("height", histogram.y0.rangeBand())
-          .attr("y", function(d) { return histogram.y1(d.name); })
-          .on("mouseover", function(d){
+        bar = histogram.makeHorizontalStackedBars(barGroup, htmlClass);
+  
+        bar.on("mouseover", function(d){
             d3.select(this)
               .style("fill", config.color.bar.fill);
             self.displayCountTip(self.tooltip,d.value,d.name,this,'stacked');
@@ -650,7 +629,6 @@ monarch.dovechart.prototype.drawGraph = function (histogram, isFromCrumb, parent
 
     if (data.length > 25 && self.config.height == self.config.initialHeight){
         self.config.height = data.length * 14.05;
-        var bar = self.config.height + config.margin.top + config.margin.bottom
         d3.select(self.html_div+' .chart')
             .attr("height", self.config.height + config.margin.top + config.margin.bottom);
     } else if (data.length > 25 && self.config.height != self.config.initialHeight){
@@ -699,7 +677,8 @@ monarch.dovechart.prototype.drawGraph = function (histogram, isFromCrumb, parent
     histogram.transitionYAxisToNewScale(1000);
     
     //Create SVG:G element that holds groups
-    var barGroup = self.setGroupPositioning(histogram,data);
+    var htmlClass = "bar" + self.level;
+    var barGroup = histogram.setGroupPositioning(data, self.config, htmlClass);
     
     // showTransition controls if a new view results in bars expanding
     // from zero to their respective positions

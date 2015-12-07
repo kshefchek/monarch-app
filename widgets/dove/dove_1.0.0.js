@@ -187,10 +187,12 @@ monarch.dovechart.prototype.makeLegend = function(histogram, barGroup){
     var data = self.tree.getDescendants(self.parents);
     
     //Set legend
-    //TODO we can get to this by simply selecting .chart
-    var legend = histogram.svg.selectAll(".chart")
+    // The legend (g) elements do not yet exist,
+    // selectAll creates a place holder
+    var legend = histogram.svg.selectAll('.legend')
        .data(self.groups.slice())
        .enter().append("g")
+       .attr("class", "legend")
        .attr("class", function(d) {return "legend-"+d; })
        .style("opacity", function(d) {
            if (self.config.category_filter_list.indexOf(d) > -1) {
@@ -434,7 +436,9 @@ monarch.dovechart.prototype.makeBar = function (barGroup, histogram, barLayout, 
     
     //Create bars 
     if (barLayout == 'grouped'){
-        bar = barGroup.selectAll("g")
+        //The g elements do not yet exists, selectAll creates
+        // a place holder
+        bar = barGroup.selectAll('g')
           .data(function(d) { return d.counts; })
           .enter().append("rect")
           .attr("class",("rect"+self.level))
@@ -467,7 +471,9 @@ monarch.dovechart.prototype.makeBar = function (barGroup, histogram, barLayout, 
         }
         
     } else if (barLayout == 'stacked') {
-        bar = barGroup.selectAll("g")
+        //The g elements do not yet exists, selectAll creates
+        // a place holder
+        bar = barGroup.selectAll('g')
           .data(function(d) { return d.counts; })
           .enter().append("rect")
           .attr("class",("rect"+self.level))
@@ -650,7 +656,6 @@ monarch.dovechart.prototype.drawGraph = function (histogram, isFromCrumb, parent
 
     if (data.length > 25 && self.config.height == self.config.initialHeight){
         self.config.height = data.length * 14.05;
-        var bar = self.config.height + config.margin.top + config.margin.bottom
         d3.select(self.html_div+' .chart')
             .attr("height", self.config.height + config.margin.top + config.margin.bottom);
     } else if (data.length > 25 && self.config.height != self.config.initialHeight){
@@ -2348,17 +2353,17 @@ monarch.builder.tree_builder.prototype.getDefaultConfig = function(){
     return config;
 }
 /* 
- * Package: barchart.js
+ * Package: chart.js
  * 
- * Namespace: monarch.chart.barchart
+ * Namespace: monarch.chart
  * 
+ * Generic chart class
  */
 
 // Module and namespace checking.
 if (typeof monarch == 'undefined') { var monarch = {};}
-if (typeof monarch.chart == 'undefined') { monarch.chart = {};}
 
-monarch.chart.barchart = function(config, html_div, svg_class){
+monarch.chart = function(config, html_div, svg_class){
     var self = this;
 
     //Define scales
@@ -2375,11 +2380,6 @@ monarch.chart.barchart = function(config, html_div, svg_class){
     // Upper value of a bar horizontally
     self.x = d3.scale.linear()
         .range([self.x0, config.width]);
-  
-    //Bar colors
-    barColors = config.color.bars;
-    self.color = d3.scale.ordinal()
-        .range(Object.keys(barColors).map(function(k) { return barColors[k] }));
 
     self.xAxis = d3.svg.axis()
         .scale(self.x)
@@ -2395,7 +2395,7 @@ monarch.chart.barchart = function(config, html_div, svg_class){
     self.svg = d3.select(html_div).select('.'+svg_class).select('g');
 };
 
-monarch.chart.barchart.prototype.setXTicks = function(config) {
+monarch.chart.prototype.setXTicks = function(config) {
     var self = this;
     //Set x axis ticks
     self.svg.append("g")
@@ -2414,7 +2414,7 @@ monarch.chart.barchart.prototype.setXTicks = function(config) {
     return self;
 };
 
-monarch.chart.barchart.prototype.setYTicks = function() {
+monarch.chart.prototype.setYTicks = function() {
     var self = this;
     //Set Y axis ticks and labels
     self.svg.append("g")
@@ -2424,7 +2424,7 @@ monarch.chart.barchart.prototype.setYTicks = function() {
     return self;
 }
 
-monarch.chart.barchart.prototype.setLinearScale = function(width) {
+monarch.chart.prototype.setLinearScale = function(width) {
     var self = this;
     self.x0 = 0;
     
@@ -2439,7 +2439,7 @@ monarch.chart.barchart.prototype.setLinearScale = function(width) {
     return self;
 };
 
-monarch.chart.barchart.prototype.setLogScale = function(width) {
+monarch.chart.prototype.setLogScale = function(width) {
     var self = this;
     self.x0 = .1;
     
@@ -2454,22 +2454,43 @@ monarch.chart.barchart.prototype.setLogScale = function(width) {
     return self;
 };
 
-monarch.chart.barchart.prototype.transitionYAxisToNewScale = function(duration) {
+monarch.chart.prototype.transitionYAxisToNewScale = function(duration) {
     var self = this;
     self.svg.transition().duration(duration)
         .select(".y.axis").call(self.yAxis);
 };
 
-monarch.chart.barchart.prototype.transitionXAxisToNewScale = function(duration) {
+monarch.chart.prototype.transitionXAxisToNewScale = function(duration) {
     var self = this;
     self.svg.transition()
         .duration(duration).select(".x.axis").call(self.xAxis);
 };
 
 //Adjusts the y axis labels in relation to axis ticks
-monarch.chart.barchart.prototype.setYAxisTextSpacing = function(dx){
+monarch.chart.prototype.setYAxisTextSpacing = function(dx){
     var self = this;
     self.svg.select(".y.axis")
       .selectAll("text")
       .attr("dx", dx);
-};
+};/* 
+ * Package: barchart.js
+ * 
+ * Namespace: monarch.chart.barchart
+ * 
+ */
+
+// Module and namespace checking.
+if (typeof monarch == 'undefined') { var monarch = {};}
+if (typeof monarch.chart == 'undefined') { monarch.chart = {};}
+
+monarch.chart.barchart = function(config, html_div, svg_class){
+    monarch.chart.call(this, config, html_div, svg_class);
+    
+    //Bar colors
+    barColors = config.color.bars;
+    self.color = d3.scale.ordinal()
+        .range(Object.keys(barColors).map(function(k) { return barColors[k] }));
+}
+
+//barchart extends chart
+monarch.chart.barchart.prototype = Object.create(monarch.chart.prototype);

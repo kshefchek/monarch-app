@@ -187,10 +187,12 @@ monarch.dovechart.prototype.makeLegend = function(histogram, barGroup){
     var data = self.tree.getDescendants(self.parents);
     
     //Set legend
-    //TODO we can get to this by simply selecting .chart
-    var legend = histogram.svg.selectAll(".chart")
+    // The legend (g) elements do not yet exist,
+    // selectAll creates a place holder
+    var legend = histogram.svg.selectAll('.legend')
        .data(self.groups.slice())
        .enter().append("g")
+       .attr("class", "legend")
        .attr("class", function(d) {return "legend-"+d; })
        .style("opacity", function(d) {
            if (self.config.category_filter_list.indexOf(d) > -1) {
@@ -387,21 +389,7 @@ monarch.dovechart.prototype.displayCountTip = function(tooltip, value, name, d3S
     }
 };
 
-monarch.dovechart.prototype.setGroupPositioning = function (histogram, data) {
-    var self = this;
 
-    var groupPos = histogram.svg.selectAll()
-       .data(data)
-       .enter().append("svg:g")
-       .attr("class", ("bar"+self.level))
-       .attr("transform", function(d) { return "translate(0," + histogram.y0(d.id) + ")"; })
-       .on("click", function(d){
-           if (self.config.isYLabelURL){
-               document.location.href = self.config.yLabelBaseURL + d.id;
-           }
-       });
-    return groupPos;
-};
 
 monarch.dovechart.prototype.setXYDomains = function (histogram, data, groups) {
     var self = this;
@@ -431,18 +419,15 @@ monarch.dovechart.prototype.makeBar = function (barGroup, histogram, barLayout, 
     var bar;
     var self = this;
     var config = self.config;
+    //Class for each svg rectangle element
+    var htmlClass = "rect" + self.level;
     
     //Create bars 
     if (barLayout == 'grouped'){
-        bar = barGroup.selectAll("g")
-          .data(function(d) { return d.counts; })
-          .enter().append("rect")
-          .attr("class",("rect"+self.level))
-          .attr("height", histogram.y1.rangeBand())
-          .attr("y", function(d) { return histogram.y1(d.name); })
-          .attr("x", 1)
-          .attr("width", 0)
-          .on("mouseover", function(d){
+        bar = histogram.makeHorizontalGroupedBars(barGroup, htmlClass);
+        
+        //Mouseover/out events
+        bar.on("mouseover", function(d){
             d3.select(this)
               .style("fill", config.color.bar.fill);
               self.displayCountTip(self.tooltip, d.value, d.name, this, 'grouped');
@@ -467,15 +452,9 @@ monarch.dovechart.prototype.makeBar = function (barGroup, histogram, barLayout, 
         }
         
     } else if (barLayout == 'stacked') {
-        bar = barGroup.selectAll("g")
-          .data(function(d) { return d.counts; })
-          .enter().append("rect")
-          .attr("class",("rect"+self.level))
-          .attr("x", 1)
-          .attr("width", 0)
-          .attr("height", histogram.y0.rangeBand())
-          .attr("y", function(d) { return histogram.y1(d.name); })
-          .on("mouseover", function(d){
+        bar = histogram.makeHorizontalStackedBars(barGroup, htmlClass);
+  
+        bar.on("mouseover", function(d){
             d3.select(this)
               .style("fill", config.color.bar.fill);
             self.displayCountTip(self.tooltip,d.value,d.name,this,'stacked');
@@ -650,7 +629,6 @@ monarch.dovechart.prototype.drawGraph = function (histogram, isFromCrumb, parent
 
     if (data.length > 25 && self.config.height == self.config.initialHeight){
         self.config.height = data.length * 14.05;
-        var bar = self.config.height + config.margin.top + config.margin.bottom
         d3.select(self.html_div+' .chart')
             .attr("height", self.config.height + config.margin.top + config.margin.bottom);
     } else if (data.length > 25 && self.config.height != self.config.initialHeight){
@@ -699,7 +677,8 @@ monarch.dovechart.prototype.drawGraph = function (histogram, isFromCrumb, parent
     histogram.transitionYAxisToNewScale(1000);
     
     //Create SVG:G element that holds groups
-    var barGroup = self.setGroupPositioning(histogram,data);
+    var htmlClass = "bar" + self.level;
+    var barGroup = histogram.setGroupPositioning(data, self.config, htmlClass);
     
     // showTransition controls if a new view results in bars expanding
     // from zero to their respective positions
@@ -2348,17 +2327,17 @@ monarch.builder.tree_builder.prototype.getDefaultConfig = function(){
     return config;
 }
 /* 
- * Package: barchart.js
+ * Package: chart.js
  * 
- * Namespace: monarch.chart.barchart
+ * Namespace: monarch.chart
  * 
+ * Generic chart class
  */
 
 // Module and namespace checking.
 if (typeof monarch == 'undefined') { var monarch = {};}
-if (typeof monarch.chart == 'undefined') { monarch.chart = {};}
 
-monarch.chart.barchart = function(config, html_div, svg_class){
+monarch.chart = function(config, html_div, svg_class){
     var self = this;
 
     //Define scales
@@ -2375,11 +2354,6 @@ monarch.chart.barchart = function(config, html_div, svg_class){
     // Upper value of a bar horizontally
     self.x = d3.scale.linear()
         .range([self.x0, config.width]);
-  
-    //Bar colors
-    barColors = config.color.bars;
-    self.color = d3.scale.ordinal()
-        .range(Object.keys(barColors).map(function(k) { return barColors[k] }));
 
     self.xAxis = d3.svg.axis()
         .scale(self.x)
@@ -2395,7 +2369,7 @@ monarch.chart.barchart = function(config, html_div, svg_class){
     self.svg = d3.select(html_div).select('.'+svg_class).select('g');
 };
 
-monarch.chart.barchart.prototype.setXTicks = function(config) {
+monarch.chart.prototype.setXTicks = function(config) {
     var self = this;
     //Set x axis ticks
     self.svg.append("g")
@@ -2414,7 +2388,7 @@ monarch.chart.barchart.prototype.setXTicks = function(config) {
     return self;
 };
 
-monarch.chart.barchart.prototype.setYTicks = function() {
+monarch.chart.prototype.setYTicks = function() {
     var self = this;
     //Set Y axis ticks and labels
     self.svg.append("g")
@@ -2424,7 +2398,7 @@ monarch.chart.barchart.prototype.setYTicks = function() {
     return self;
 }
 
-monarch.chart.barchart.prototype.setLinearScale = function(width) {
+monarch.chart.prototype.setLinearScale = function(width) {
     var self = this;
     self.x0 = 0;
     
@@ -2439,7 +2413,7 @@ monarch.chart.barchart.prototype.setLinearScale = function(width) {
     return self;
 };
 
-monarch.chart.barchart.prototype.setLogScale = function(width) {
+monarch.chart.prototype.setLogScale = function(width) {
     var self = this;
     self.x0 = .1;
     
@@ -2454,22 +2428,119 @@ monarch.chart.barchart.prototype.setLogScale = function(width) {
     return self;
 };
 
-monarch.chart.barchart.prototype.transitionYAxisToNewScale = function(duration) {
+monarch.chart.prototype.transitionYAxisToNewScale = function(duration) {
     var self = this;
     self.svg.transition().duration(duration)
         .select(".y.axis").call(self.yAxis);
 };
 
-monarch.chart.barchart.prototype.transitionXAxisToNewScale = function(duration) {
+monarch.chart.prototype.transitionXAxisToNewScale = function(duration) {
     var self = this;
     self.svg.transition()
         .duration(duration).select(".x.axis").call(self.xAxis);
 };
 
 //Adjusts the y axis labels in relation to axis ticks
-monarch.chart.barchart.prototype.setYAxisTextSpacing = function(dx){
+monarch.chart.prototype.setYAxisTextSpacing = function(dx){
     var self = this;
     self.svg.select(".y.axis")
       .selectAll("text")
       .attr("dx", dx);
 };
+/*
+ * Create a svg g element for each y axis tick mark
+ * On a concrete level this is used to group rectangles for
+ * different views (stacked/grouped bars, heatmaps)
+ * 
+ * Returns: d3.selection
+ */
+monarch.chart.prototype.setGroupPositioning = function (data, config, htmlClass) {
+    var self = this;
+
+    var groupPos = self.svg.selectAll()
+       .data(data)
+       .enter().append("svg:g")
+       .attr("class", htmlClass)
+       .attr("transform", function(d) { return "translate(0," + self.y0(d.id) + ")"; })
+       .on("click", function(d){
+           if (config.isYLabelURL){
+               document.location.href = config.yLabelBaseURL + d.id;
+           }
+       });
+    return groupPos;
+};/* 
+ * Package: barchart.js
+ * 
+ * Namespace: monarch.chart.barchart
+ * 
+ */
+
+// Module and namespace checking.
+if (typeof monarch == 'undefined') { var monarch = {};}
+if (typeof monarch.chart == 'undefined') { monarch.chart = {};}
+
+monarch.chart.barchart = function(config, html_div, svg_class) {
+    var self = this;
+    monarch.chart.call(this, config, html_div, svg_class);
+    
+    //Bar colors
+    barColors = config.color.bars;
+    self.color = d3.scale.ordinal()
+        .range(Object.keys(barColors).map(function(k) { return barColors[k] }));
+}
+
+//barchart extends chart
+monarch.chart.barchart.prototype = Object.create(monarch.chart.prototype);
+
+/*
+ * Makes svg rectangles in a grouped bar layout
+ * Args
+ *   - barGroup: d3.selection of each svg g element to hold the bars, with
+ *               data bound to each element
+ *               for example the output from chart.setGroupPositioning()
+ * 
+ * Returns d3.selection
+ */
+monarch.chart.barchart.prototype.makeHorizontalGroupedBars = function(barGroup, htmlClass) {
+    var self = this;
+    
+    //The g elements do not yet exists, selectAll creates
+    // a place holder
+    var barSelection = barGroup.selectAll('g')
+        .data(function(d) { return d.counts; })
+        .enter().append("rect")
+        .attr("class", htmlClass)
+        .attr("height", self.y1.rangeBand())
+        .attr("y", function(d) { return self.y1(d.name); })
+        .attr("x", 1)
+        .attr("width", 0);
+    
+    return barSelection;
+};
+
+/*
+ * Makes horizontal svg rectangles in a stacked bar layout
+ * Args
+ *   - barGroup: d3.selection of each svg g element to hold the bars, with
+ *               data bound to each element
+ *               for example the output from chart.setGroupPositioning()
+ * 
+ * Returns d3.selection
+ */
+monarch.chart.barchart.prototype.makeHorizontalStackedBars = function(barGroup, htmlClass) {
+    var self = this;
+    
+    //The g elements do not yet exists, selectAll creates
+    // a place holder
+    var barSelection = barGroup.selectAll('g')
+        .data(function(d) { return d.counts; })
+          .enter().append("rect")
+          .attr("class", htmlClass)
+          .attr("x", 1)
+          .attr("width", 0)
+          .attr("height", self.y0.rangeBand())
+          .attr("y", function(d) { return self.y1(d.name); });
+    
+    return barSelection;
+};
+
