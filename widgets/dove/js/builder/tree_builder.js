@@ -15,9 +15,11 @@ if (typeof monarch.builder == 'undefined') { monarch.builder = {};}
  * Parameters:
  *    solr_url - Base URL for Solr service
  *    scigraph_url - Base URL of SciGraph REST API
- *    golr_conf - Congifuration for golr_manager
+ *    golr_conf - Configuration for golr_manager
  *    tree - monarch.model.tree object
- *  
+ *    
+ *  TODO this needs to be updated to use the latest golr manager:
+ *  https://github.com/berkeleybop/bbop-manager-golr
  */
 monarch.builder.tree_builder = function(solr_url, scigraph_url, golr_conf, tree, config){
     var self = this;

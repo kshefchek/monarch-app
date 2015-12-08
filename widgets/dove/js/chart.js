@@ -3,7 +3,11 @@
  * 
  * Namespace: monarch.chart
  * 
- * Generic chart class
+ * Generic chart class, a chart being defined as a chart
+ * with an x and y axis (so ruling out some chart types
+ * such as pie charts)
+ * 
+ * Subclasses: barchart.js
  */
 
 // Module and namespace checking.
@@ -12,18 +16,18 @@ if (typeof monarch == 'undefined') { var monarch = {};}
 monarch.chart = function(config, html_div, svg_class){
     var self = this;
 
-    //Define scales
-    // Lower value of a bar vertically
+    //Define defaults for scales
+    // Lower value of the y axis
     self.y0 = d3.scale.ordinal()
         .rangeRoundBands([0,config.height], .1);
     
-    //Upper value of a bar vertically
+    //Upper value of the y axis
     self.y1 = d3.scale.ordinal();
     
-    // Lower value of a bar horizontally
+    // Lower value of the x axis
     self.x0 = 0;
 
-    // Upper value of a bar horizontally
+    // Upper value of the x axis
     self.x = d3.scale.linear()
         .range([self.x0, config.width]);
 
@@ -36,14 +40,21 @@ monarch.chart = function(config, html_div, svg_class){
         .scale(self.y0)
         .orient("left");
 
-    // Selects the g element for the entire chart, 
-    // the direct child of the svg element
+    /* Selects the g element for the entire chart, 
+     * the direct child of the svg element
+     * this requires setting up a DOM with the structure
+     *  <div class="html_div">
+     *    <svg>
+     *      <g>
+     *      
+     * TODO: initialize DOM if this fails
+     */
     self.svg = d3.select(html_div).select('.'+svg_class).select('g');
 };
 
 monarch.chart.prototype.setXTicks = function(config) {
     var self = this;
-    //Set x axis ticks
+    //Set x axis tick marks
     self.svg.append("g")
         .attr("class", "x axis")
         .call(self.xAxis)
@@ -62,7 +73,7 @@ monarch.chart.prototype.setXTicks = function(config) {
 
 monarch.chart.prototype.setYTicks = function() {
     var self = this;
-    //Set Y axis ticks and labels
+    //Set Y axis tick marks and labels
     self.svg.append("g")
         .attr("class", "y axis")
         .call(self.yAxis);

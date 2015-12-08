@@ -1430,6 +1430,8 @@ monarch.dovechart.prototype.setXAxisPos = function(w,h){
     return this.config.xAxisPos;
 };
 
+// Some dead code for implementing dynamic resizing of charts
+// TODO move to some dev branch
 /*
  * setSizeConfiguration and setSizingRatios() are from an incompleted attempt
  * to create dynamically resized charts.  If implementing something like this
@@ -1453,7 +1455,7 @@ monarch.dovechart.prototype.setXAxisPos = function(w,h){
              }
          });
      }
- */
+ 
 
 
 monarch.dovechart.prototype.setSizeConfiguration = function(graphRatio){
@@ -1482,6 +1484,8 @@ monarch.dovechart.prototype.setSizingRatios = function(){
     
     return graphRatio;
 };
+
+*/
 
 //dovechart default SVG Coordinates
 monarch.dovechart.prototype.setPolygonCoordinates = function(){
@@ -1915,9 +1919,11 @@ if (typeof monarch.builder == 'undefined') { monarch.builder = {};}
  * Parameters:
  *    solr_url - Base URL for Solr service
  *    scigraph_url - Base URL of SciGraph REST API
- *    golr_conf - Congifuration for golr_manager
+ *    golr_conf - Configuration for golr_manager
  *    tree - monarch.model.tree object
- *  
+ *    
+ *  TODO this needs to be updated to use the latest golr manager:
+ *  https://github.com/berkeleybop/bbop-manager-golr
  */
 monarch.builder.tree_builder = function(solr_url, scigraph_url, golr_conf, tree, config){
     var self = this;
@@ -2316,7 +2322,11 @@ monarch.builder.tree_builder.prototype.getDefaultConfig = function(){
  * 
  * Namespace: monarch.chart
  * 
- * Generic chart class
+ * Generic chart class, a chart being defined as a chart
+ * with an x and y axis (so ruling out some chart types
+ * such as pie charts)
+ * 
+ * Subclasses: barchart.js
  */
 
 // Module and namespace checking.
@@ -2325,18 +2335,18 @@ if (typeof monarch == 'undefined') { var monarch = {};}
 monarch.chart = function(config, html_div, svg_class){
     var self = this;
 
-    //Define scales
-    // Lower value of a bar vertically
+    //Define defaults for scales
+    // Lower value of the y axis
     self.y0 = d3.scale.ordinal()
         .rangeRoundBands([0,config.height], .1);
     
-    //Upper value of a bar vertically
+    //Upper value of the y axis
     self.y1 = d3.scale.ordinal();
     
-    // Lower value of a bar horizontally
+    // Lower value of the x axis
     self.x0 = 0;
 
-    // Upper value of a bar horizontally
+    // Upper value of the x axis
     self.x = d3.scale.linear()
         .range([self.x0, config.width]);
 
@@ -2349,14 +2359,21 @@ monarch.chart = function(config, html_div, svg_class){
         .scale(self.y0)
         .orient("left");
 
-    // Selects the g element for the entire chart, 
-    // the direct child of the svg element
+    /* Selects the g element for the entire chart, 
+     * the direct child of the svg element
+     * this requires setting up a DOM with the structure
+     *  <div class="html_div">
+     *    <svg>
+     *      <g>
+     *      
+     * TODO: initialize DOM if this fails
+     */
     self.svg = d3.select(html_div).select('.'+svg_class).select('g');
 };
 
 monarch.chart.prototype.setXTicks = function(config) {
     var self = this;
-    //Set x axis ticks
+    //Set x axis tick marks
     self.svg.append("g")
         .attr("class", "x axis")
         .call(self.xAxis)
@@ -2375,7 +2392,7 @@ monarch.chart.prototype.setXTicks = function(config) {
 
 monarch.chart.prototype.setYTicks = function() {
     var self = this;
-    //Set Y axis ticks and labels
+    //Set Y axis tick marks and labels
     self.svg.append("g")
         .attr("class", "y axis")
         .call(self.yAxis);
@@ -2458,6 +2475,11 @@ monarch.chart.prototype.setGroupPositioning = function (data, config, htmlClass)
  * 
  * Namespace: monarch.chart.barchart
  * 
+ * Class to create different types of barcharts,
+ * horizontal stacked, grouped, and simple barcharts
+ * are implemented
+ * 
+ * Parents: chart.js
  */
 
 // Module and namespace checking.

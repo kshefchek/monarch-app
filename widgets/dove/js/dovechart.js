@@ -1430,6 +1430,8 @@ monarch.dovechart.prototype.setXAxisPos = function(w,h){
     return this.config.xAxisPos;
 };
 
+// Some dead code for implementing dynamic resizing of charts
+// TODO move to some dev branch
 /*
  * setSizeConfiguration and setSizingRatios() are from an incompleted attempt
  * to create dynamically resized charts.  If implementing something like this
@@ -1453,7 +1455,7 @@ monarch.dovechart.prototype.setXAxisPos = function(w,h){
              }
          });
      }
- */
+ 
 
 
 monarch.dovechart.prototype.setSizeConfiguration = function(graphRatio){
@@ -1482,6 +1484,8 @@ monarch.dovechart.prototype.setSizingRatios = function(){
     
     return graphRatio;
 };
+
+*/
 
 //dovechart default SVG Coordinates
 monarch.dovechart.prototype.setPolygonCoordinates = function(){

@@ -3,6 +3,11 @@
  * 
  * Namespace: monarch.chart.barchart
  * 
+ * Class to create different types of barcharts,
+ * horizontal stacked, grouped, and simple barcharts
+ * are implemented
+ * 
+ * Parents: chart.js
  */
 
 // Module and namespace checking.
