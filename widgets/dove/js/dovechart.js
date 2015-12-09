@@ -389,32 +389,6 @@ monarch.dovechart.prototype.displayCountTip = function(tooltip, value, name, d3S
     }
 };
 
-
-monarch.dovechart.prototype.setXYDomains = function (histogram, data, groups) {
-    //This function could be moved the barchart class
-    var self = this;
-    //Set y0 domain
-    // TODO remove groups arg in favor of generating this dynamically
-    // for category faceting
-    var groups = self.getGroups(data);
-
-    histogram.y0.domain(data.map(function(d) { return d.id; }));
-    
-    if (jQuery(self.html_div + ' input[name=mode]:checked').val()=== 'grouped' || groups.length === 1){
-        var xGroupMax = self.getGroupMax(data);
-        histogram.x.domain([histogram.x0, xGroupMax]);
-        histogram.y1.domain(groups)
-        .rangeRoundBands([0, histogram.y0.rangeBand()]);
-    } else if (jQuery(self.html_div + ' input[name=mode]:checked').val()=== 'stacked'){
-        var xStackMax = self.getStackMax(data);
-        histogram.x.domain([histogram.x0, xStackMax]);
-        histogram.y1.domain(groups).rangeRoundBands([0,0]);
-    } else {
-        histogram.y1.domain(groups)
-        .rangeRoundBands([0, histogram.y0.rangeBand()]);
-    }
-};
-
 monarch.dovechart.prototype.makeBar = function (barGroup, histogram, barLayout, isFirstGraph) {
     var bar;
     var self = this;
@@ -441,7 +415,7 @@ monarch.dovechart.prototype.makeBar = function (barGroup, histogram, barLayout, 
               .style("fill", function(d) { return histogram.color(d.name); });
             self.tooltip.style("display", "none");
           })
-          .style("fill", function(d) { return histogram.color(d.name); });
+          
         
         if (isFirstGraph){
             bar.attr("width", 0);
@@ -462,7 +436,6 @@ monarch.dovechart.prototype.makeBar = function (barGroup, histogram, barLayout, 
               .style("fill", function(d) { return histogram.color(d.name); });
             self.tooltip.style("display", "none");
           })
-          .style("fill", function(d) { return histogram.color(d.name); });
         
         if (isFirstGraph){
             bar.attr("width", 0)
@@ -643,11 +616,11 @@ monarch.dovechart.prototype.drawGraph = function (histogram, isFromCrumb, parent
     var height = self.resizeChart(data);
     //reset d3 config after changing height
     histogram.y0 = d3.scale.ordinal()
-      .rangeRoundBands([0,height], .1);
+        .rangeRoundBands([0,height], .1);
             
     histogram.yAxis = d3.svg.axis()
-      .scale(histogram.y0)
-      .orient("left");
+        .scale(histogram.y0)
+        .orient("left");
     
     self.changeScalePerSettings(histogram);
     
@@ -746,9 +719,9 @@ monarch.dovechart.prototype.getValueOfCheckbox = function(name,value){
 monarch.dovechart.prototype.changeScalePerSettings = function(histogram){
     var self = this;
     if (self.getValueOfCheckbox('scale','log')){
-        histogram.setLogScale(self.config.width);
+        histogram.setLogXScale(self.config.width);
     } else {
-        histogram.setLinearScale(self.config.width);
+        histogram.setLinearXScale(self.config.width);
     }
 };
 

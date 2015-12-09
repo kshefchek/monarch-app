@@ -389,32 +389,6 @@ monarch.dovechart.prototype.displayCountTip = function(tooltip, value, name, d3S
     }
 };
 
-
-monarch.dovechart.prototype.setXYDomains = function (histogram, data, groups) {
-    //This function could be moved the barchart class
-    var self = this;
-    //Set y0 domain
-    // TODO remove groups arg in favor of generating this dynamically
-    // for category faceting
-    var groups = self.getGroups(data);
-
-    histogram.y0.domain(data.map(function(d) { return d.id; }));
-    
-    if (jQuery(self.html_div + ' input[name=mode]:checked').val()=== 'grouped' || groups.length === 1){
-        var xGroupMax = self.getGroupMax(data);
-        histogram.x.domain([histogram.x0, xGroupMax]);
-        histogram.y1.domain(groups)
-        .rangeRoundBands([0, histogram.y0.rangeBand()]);
-    } else if (jQuery(self.html_div + ' input[name=mode]:checked').val()=== 'stacked'){
-        var xStackMax = self.getStackMax(data);
-        histogram.x.domain([histogram.x0, xStackMax]);
-        histogram.y1.domain(groups).rangeRoundBands([0,0]);
-    } else {
-        histogram.y1.domain(groups)
-        .rangeRoundBands([0, histogram.y0.rangeBand()]);
-    }
-};
-
 monarch.dovechart.prototype.makeBar = function (barGroup, histogram, barLayout, isFirstGraph) {
     var bar;
     var self = this;
@@ -441,7 +415,7 @@ monarch.dovechart.prototype.makeBar = function (barGroup, histogram, barLayout, 
               .style("fill", function(d) { return histogram.color(d.name); });
             self.tooltip.style("display", "none");
           })
-          .style("fill", function(d) { return histogram.color(d.name); });
+          
         
         if (isFirstGraph){
             bar.attr("width", 0);
@@ -462,7 +436,6 @@ monarch.dovechart.prototype.makeBar = function (barGroup, histogram, barLayout, 
               .style("fill", function(d) { return histogram.color(d.name); });
             self.tooltip.style("display", "none");
           })
-          .style("fill", function(d) { return histogram.color(d.name); });
         
         if (isFirstGraph){
             bar.attr("width", 0)
@@ -643,11 +616,11 @@ monarch.dovechart.prototype.drawGraph = function (histogram, isFromCrumb, parent
     var height = self.resizeChart(data);
     //reset d3 config after changing height
     histogram.y0 = d3.scale.ordinal()
-      .rangeRoundBands([0,height], .1);
+        .rangeRoundBands([0,height], .1);
             
     histogram.yAxis = d3.svg.axis()
-      .scale(histogram.y0)
-      .orient("left");
+        .scale(histogram.y0)
+        .orient("left");
     
     self.changeScalePerSettings(histogram);
     
@@ -746,9 +719,9 @@ monarch.dovechart.prototype.getValueOfCheckbox = function(name,value){
 monarch.dovechart.prototype.changeScalePerSettings = function(histogram){
     var self = this;
     if (self.getValueOfCheckbox('scale','log')){
-        histogram.setLogScale(self.config.width);
+        histogram.setLogXScale(self.config.width);
     } else {
-        histogram.setLinearScale(self.config.width);
+        histogram.setLinearXScale(self.config.width);
     }
 };
 
@@ -2404,7 +2377,7 @@ monarch.chart.prototype.setXTicks = function(config) {
 
 monarch.chart.prototype.setYTicks = function() {
     var self = this;
-    //Set Y axis tick marks and labels
+    //Set Y axis tick marks
     self.svg.append("g")
         .attr("class", "y axis")
         .call(self.yAxis);
@@ -2412,7 +2385,7 @@ monarch.chart.prototype.setYTicks = function() {
     return self;
 }
 
-monarch.chart.prototype.setLinearScale = function(width) {
+monarch.chart.prototype.setLinearXScale = function(width) {
     var self = this;
     self.x0 = 0;
     
@@ -2427,7 +2400,7 @@ monarch.chart.prototype.setLinearScale = function(width) {
     return self;
 };
 
-monarch.chart.prototype.setLogScale = function(width) {
+monarch.chart.prototype.setLogXScale = function(width) {
     var self = this;
     self.x0 = .1;
     
@@ -2482,6 +2455,26 @@ monarch.chart.prototype.setGroupPositioning = function (data, config, htmlClass)
            }
        });
     return groupPos;
+};
+
+/* Get X Axis limit for grouped configuration
+ * Could be refactored into a class that defines
+ * a group of siblings
+ */
+monarch.chart.prototype.getGroupMax = function(data){
+    return d3.max(data, function(d) { 
+        return d3.max(d.counts, function(d) { return d.value; });
+    });
+};
+
+/* Get X Axis limit for stacked configuration
+ * Could be refactored into a class that defines
+ * a group of siblings
+ */
+monarch.chart.prototype.getStackMax = function(data){
+    return d3.max(data, function(d) { 
+        return d3.max(d.counts, function(d) { return d.x1; });
+    }); 
 };/* 
  * Package: barchart.js
  * 
@@ -2529,6 +2522,7 @@ monarch.chart.barchart.prototype.makeHorizontalGroupedBars = function(barGroup, 
         .data(function(d) { return d.counts; })
         .enter().append("rect")
         .attr("class", htmlClass)
+        .style("fill", function(d) { return self.color(d.name); })
         .attr("height", self.y1.rangeBand())
         .attr("y", function(d) { return self.y1(d.name); })
         .attr("x", 1)
@@ -2561,6 +2555,7 @@ monarch.chart.barchart.prototype.makeHorizontalStackedBars = function(barGroup, 
         .data(function(d) { return d.counts; })
           .enter().append("rect")
           .attr("class", htmlClass)
+          .style("fill", function(d) { return self.color(d.name); })
           .attr("height", self.y0.rangeBand())
           .attr("y", function(d) { return self.y1(d.name); })
           .attr("x", function(d){
@@ -2610,23 +2605,80 @@ monarch.chart.barchart.prototype.setXYDomains = function (data, groups, config) 
     }
 };
 
-/* Get X Axis limit for grouped configuration
- * Could be refactored into a class that defines
- * a group of siblings
+/* 
+ * Package: heatmap.js
+ * 
+ * Namespace: monarch.chart.heatmap
+ * 
+ * Class to create heatmaps
+ * 
+ * Parents: chart.js
  */
-monarch.chart.barchart.prototype.getGroupMax = function(data){
-    return d3.max(data, function(d) { 
-        return d3.max(d.counts, function(d) { return d.value; });
-    });
-};
 
-/* Get X Axis limit for stacked configuration
- * Could be refactored into a class that defines
- * a group of siblings
- */
-monarch.chart.barchart.prototype.getStackMax = function(data){
-    return d3.max(data, function(d) { 
-        return d3.max(d.counts, function(d) { return d.x1; });
-    }); 
-};
+// Module and namespace checking.
+if (typeof monarch == 'undefined') { var monarch = {};}
+if (typeof monarch.chart == 'undefined') { monarch.chart = {};}
 
+monarch.chart.heatmap = function(config, html_div, svg_class) {
+    var self = this;
+    monarch.chart.call(this, config, html_div, svg_class);
+    
+    self.x = d3.scale.ordinal()
+        .rangeRoundBands([0,config.width], .1);
+    
+    self.xAxis = d3.svg.axis()
+        .scale(self.x)
+        .orient("top");
+    
+    //grid color range, hardcode for now
+    var gridColors = ['#a5d9d1', '#93d2c8', '#81cabf', '#6fc3b5',
+                      '#5dbbac', '#4bb4a3', '#44A293']; //5% darker: 3c9082
+    self.color = d3.scale.linear()
+        .range(gridColors);
+}
+
+//heatmap extends chart
+monarch.chart.heatmap.prototype = Object.create(monarch.chart.prototype);
+
+//Adds svg:rect element for each color well in the matrix
+monarch.chart.heatmap.prototype.setXYDomains = function (data, groups, width) {
+    var self = this;
+
+    self.x = d3.scale.ordinal()
+    .domain(groups)
+        .rangeRoundBands([0,width], 1);
+    
+    self.xAxis = d3.svg.axis()
+        .scale(self.x)
+        .orient("top");
+    
+    self.y0.domain(data.map(function(d) { return d.id; }));
+    self.y1.domain(groups).rangeRoundBands([0,0]);
+    
+
+    
+    var xGroupMax = self.getGroupMax(data);
+    self.color.domain([self.x0, xGroupMax]);
+}
+
+// Adds svg:rect element for each color well in the matrix
+//monarch.chart.heatmap.prototype.makeColorWells = function (barGroup, htmlClass, scale) {
+monarch.chart.heatmap.prototype.makeHorizontalStackedBars = function (barGroup, htmlClass, scale) {
+    var self = this;
+
+    //The g elements do not yet exists, selectAll creates
+    // a place holder
+    var barSelection = barGroup.selectAll('g')
+          .data(function(d) { return d.counts; })
+          .enter().append("rect")
+          .attr("class", htmlClass)
+           .style("fill", function(d) { return self.color(d.value); })
+          .attr("height", self.y0.rangeBand())
+          .attr("y", function(d) { return self.y1(d.name); })
+          /*.attr("x", function(d){
+                return self.x(d);
+           })*/
+           .attr("width", 15);
+    
+    return barSelection;
+}

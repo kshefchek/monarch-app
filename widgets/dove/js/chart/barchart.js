@@ -45,6 +45,7 @@ monarch.chart.barchart.prototype.makeHorizontalGroupedBars = function(barGroup, 
         .data(function(d) { return d.counts; })
         .enter().append("rect")
         .attr("class", htmlClass)
+        .style("fill", function(d) { return self.color(d.name); })
         .attr("height", self.y1.rangeBand())
         .attr("y", function(d) { return self.y1(d.name); })
         .attr("x", 1)
@@ -77,6 +78,7 @@ monarch.chart.barchart.prototype.makeHorizontalStackedBars = function(barGroup, 
         .data(function(d) { return d.counts; })
           .enter().append("rect")
           .attr("class", htmlClass)
+          .style("fill", function(d) { return self.color(d.name); })
           .attr("height", self.y0.rangeBand())
           .attr("y", function(d) { return self.y1(d.name); })
           .attr("x", function(d){
@@ -124,25 +126,5 @@ monarch.chart.barchart.prototype.setXYDomains = function (data, groups, config) 
         self.y1.domain(groups)
             .rangeRoundBands([0, self.y0.rangeBand()]);
     }
-};
-
-/* Get X Axis limit for grouped configuration
- * Could be refactored into a class that defines
- * a group of siblings
- */
-monarch.chart.barchart.prototype.getGroupMax = function(data){
-    return d3.max(data, function(d) { 
-        return d3.max(d.counts, function(d) { return d.value; });
-    });
-};
-
-/* Get X Axis limit for stacked configuration
- * Could be refactored into a class that defines
- * a group of siblings
- */
-monarch.chart.barchart.prototype.getStackMax = function(data){
-    return d3.max(data, function(d) { 
-        return d3.max(d.counts, function(d) { return d.x1; });
-    }); 
 };
 

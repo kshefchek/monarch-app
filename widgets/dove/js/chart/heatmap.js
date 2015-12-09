@@ -17,7 +17,11 @@ monarch.chart.heatmap = function(config, html_div, svg_class) {
     monarch.chart.call(this, config, html_div, svg_class);
     
     self.x = d3.scale.ordinal()
-    .range([self.x0, config.width]);
+        .rangeRoundBands([0,config.width], .1);
+    
+    self.xAxis = d3.svg.axis()
+        .scale(self.x)
+        .orient("top");
     
     //grid color range, hardcode for now
     var gridColors = ['#a5d9d1', '#93d2c8', '#81cabf', '#6fc3b5',
@@ -30,16 +34,29 @@ monarch.chart.heatmap = function(config, html_div, svg_class) {
 monarch.chart.heatmap.prototype = Object.create(monarch.chart.prototype);
 
 //Adds svg:rect element for each color well in the matrix
-monarch.chart.heatmap.prototype.setXYDomains = function (data, groups, facets) {
+monarch.chart.heatmap.prototype.setXYDomains = function (data, groups, width) {
     var self = this;
-    //Set y0 domain
-    histogram.y0.domain(data.map(function(d) { return d.id; }));
-    histogram.x.domain([histogram.x0, xGroupMax]);
-    histogram.y1.domain(groups).rangeRoundBands([0, histogram.y0.rangeBand()]);
+
+    self.x = d3.scale.ordinal()
+    .domain(groups)
+        .rangeRoundBands([0,width], 1);
+    
+    self.xAxis = d3.svg.axis()
+        .scale(self.x)
+        .orient("top");
+    
+    self.y0.domain(data.map(function(d) { return d.id; }));
+    self.y1.domain(groups).rangeRoundBands([0,0]);
+    
+
+    
+    var xGroupMax = self.getGroupMax(data);
+    self.color.domain([self.x0, xGroupMax]);
 }
 
 // Adds svg:rect element for each color well in the matrix
-monarch.chart.heatmap.prototype.makeColorWell = function (barGroup, htmlClass, scale) {
+//monarch.chart.heatmap.prototype.makeColorWells = function (barGroup, htmlClass, scale) {
+monarch.chart.heatmap.prototype.makeHorizontalStackedBars = function (barGroup, htmlClass, scale) {
     var self = this;
 
     //The g elements do not yet exists, selectAll creates
@@ -48,11 +65,12 @@ monarch.chart.heatmap.prototype.makeColorWell = function (barGroup, htmlClass, s
           .data(function(d) { return d.counts; })
           .enter().append("rect")
           .attr("class", htmlClass)
+           .style("fill", function(d) { return self.color(d.value); })
           .attr("height", self.y0.rangeBand())
           .attr("y", function(d) { return self.y1(d.name); })
-          .attr("x", function(d, i){
-                return self.x( (i*15) + 10 );
-           })
+          /*.attr("x", function(d){
+                return self.x(d);
+           })*/
            .attr("width", 15);
     
     return barSelection;

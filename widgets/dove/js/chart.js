@@ -99,7 +99,7 @@ monarch.chart.prototype.setXTicks = function(config) {
 
 monarch.chart.prototype.setYTicks = function() {
     var self = this;
-    //Set Y axis tick marks and labels
+    //Set Y axis tick marks
     self.svg.append("g")
         .attr("class", "y axis")
         .call(self.yAxis);
@@ -107,7 +107,7 @@ monarch.chart.prototype.setYTicks = function() {
     return self;
 }
 
-monarch.chart.prototype.setLinearScale = function(width) {
+monarch.chart.prototype.setLinearXScale = function(width) {
     var self = this;
     self.x0 = 0;
     
@@ -122,7 +122,7 @@ monarch.chart.prototype.setLinearScale = function(width) {
     return self;
 };
 
-monarch.chart.prototype.setLogScale = function(width) {
+monarch.chart.prototype.setLogXScale = function(width) {
     var self = this;
     self.x0 = .1;
     
@@ -177,4 +177,24 @@ monarch.chart.prototype.setGroupPositioning = function (data, config, htmlClass)
            }
        });
     return groupPos;
+};
+
+/* Get X Axis limit for grouped configuration
+ * Could be refactored into a class that defines
+ * a group of siblings
+ */
+monarch.chart.prototype.getGroupMax = function(data){
+    return d3.max(data, function(d) { 
+        return d3.max(d.counts, function(d) { return d.value; });
+    });
+};
+
+/* Get X Axis limit for stacked configuration
+ * Could be refactored into a class that defines
+ * a group of siblings
+ */
+monarch.chart.prototype.getStackMax = function(data){
+    return d3.max(data, function(d) { 
+        return d3.max(d.counts, function(d) { return d.x1; });
+    }); 
 };
