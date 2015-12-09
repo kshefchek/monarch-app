@@ -16,18 +16,42 @@ if (typeof monarch == 'undefined') { var monarch = {};}
 monarch.chart = function(config, html_div, svg_class){
     var self = this;
 
-    //Define defaults for scales
-    // Lower value of the y axis
+    // Defaults are set for horizontal charts
+    
+    /* self.y0
+     * initialized as a scale object,
+     * for example a d3.scale.ordinal(), 
+     * which manages a set of discrete values
+     * 
+     * y0 is used to set the y axis domain
+     * and positioning of elements such as 
+     * horizontal bars
+     */
     self.y0 = d3.scale.ordinal()
         .rangeRoundBands([0,config.height], .1);
     
-    //Upper value of the y axis
+    /* self.y1
+     * initialized as a scale object,
+     * for example a d3.scale.ordinal()
+     * 
+     * y1 is used for setting positioning within a single group
+     * in a grouped barchart view, 
+     * see monarch.dovechart.setXYDomains() and 
+     * monarch.chart.barcharts.makeHorizontalGroupedBars() and
+     */
     self.y1 = d3.scale.ordinal();
     
-    // Lower value of the x axis
+    // Lower value of the x axis domain
+    // Defaults to 0, and is set to .1 for log scales
     self.x0 = 0;
 
-    // Upper value of the x axis
+    /* self.x is a scale object, as
+     * a default a d3.scale.linear which is both
+     * an object and a function,
+     * for example, this is used to set
+     * the domain and range of the x axis and convert
+     * count values to rect width attributes in barcharts
+     */ 
     self.x = d3.scale.linear()
         .range([self.x0, config.width]);
 
@@ -39,6 +63,8 @@ monarch.chart = function(config, html_div, svg_class){
     self.yAxis = d3.svg.axis()
         .scale(self.y0)
         .orient("left");
+    
+    self.html_div = html_div;
 
     /* Selects the g element for the entire chart, 
      * the direct child of the svg element

@@ -19,7 +19,7 @@ monarch.chart.barchart = function(config, html_div, svg_class) {
     monarch.chart.call(this, config, html_div, svg_class);
     
     //Bar colors
-    barColors = config.color.bars;
+    var barColors = config.color.bars;
     self.color = d3.scale.ordinal()
         .range(Object.keys(barColors).map(function(k) { return barColors[k] }));
 }
@@ -90,7 +90,7 @@ monarch.chart.barchart.prototype.makeHorizontalStackedBars = function(barGroup, 
                if (d.x0 == 0 && d.x1 != 0){
                    return self.x(d.x1); 
                } else if ( ( scale === 'log' ) 
-                       && ( histogram.x(d.x1) - histogram.x(d.x0) == 0 )) {
+                       && ( self.x(d.x1) - self.x(d.x0) == 0 )) {
                    return 1;  
                } else {
                    return self.x(d.x1) - self.x(d.x0); 
@@ -98,5 +98,51 @@ monarch.chart.barchart.prototype.makeHorizontalStackedBars = function(barGroup, 
            });
     
     return barSelection;
+};
+
+monarch.chart.barchart.prototype.setXYDomains = function (data, groups, config) {
+    var self = this;
+    //Set y0 domain
+    self.y0.domain(data.map(function(d) { return d.id; }));
+    
+    if (typeof config === 'undefined') {
+        //fallback in case this option has not been passed
+        config = jQuery(self.html_div + ' input[name=mode]:checked').val();
+    }
+    
+    //TODO improve checking of stacked/grouped configuration
+    if (config === 'grouped' || groups.length === 1){
+        var xGroupMax = self.getGroupMax(data);
+        self.x.domain([self.x0, xGroupMax]);
+        self.y1.domain(groups)
+            .rangeRoundBands([0, self.y0.rangeBand()]);
+    } else if (config === 'stacked'){
+        var xStackMax = self.getStackMax(data);
+        self.x.domain([self.x0, xStackMax]);
+        self.y1.domain(groups).rangeRoundBands([0,0]);
+    } else {
+        self.y1.domain(groups)
+            .rangeRoundBands([0, self.y0.rangeBand()]);
+    }
+};
+
+/* Get X Axis limit for grouped configuration
+ * Could be refactored into a class that defines
+ * a group of siblings
+ */
+monarch.chart.barchart.prototype.getGroupMax = function(data){
+    return d3.max(data, function(d) { 
+        return d3.max(d.counts, function(d) { return d.value; });
+    });
+};
+
+/* Get X Axis limit for stacked configuration
+ * Could be refactored into a class that defines
+ * a group of siblings
+ */
+monarch.chart.barchart.prototype.getStackMax = function(data){
+    return d3.max(data, function(d) { 
+        return d3.max(d.counts, function(d) { return d.x1; });
+    }); 
 };
 

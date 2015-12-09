@@ -520,7 +520,7 @@ monarch.dovechart.prototype.transitionFromZero = function (bar, histogram, barLa
 monarch.dovechart.prototype.transitionGrouped = function (histogram, data, groups, bar) {
     var self = this;
     var config = self.config;
-    self.setXYDomains(histogram,data,groups);
+    histogram.setXYDomains(data, groups);
     histogram.transitionXAxisToNewScale(750);
           
     bar.transition()
@@ -555,7 +555,7 @@ monarch.dovechart.prototype.transitionGrouped = function (histogram, data, group
 monarch.dovechart.prototype.transitionStacked = function (histogram, data, groups, bar) {
     var self = this;
     var config = self.config;
-    self.setXYDomains(histogram, data, groups, 'stacked');
+    histogram.setXYDomains(data, groups, 'stacked');
     histogram.transitionXAxisToNewScale(750);
          
     bar.transition()
@@ -635,7 +635,7 @@ monarch.dovechart.prototype.drawGraph = function (histogram, isFromCrumb, parent
         data = self.removeCategories(data, self.config.category_filter_list);
     }
 
-    if (self.groups.length == 1 && isFirstGraph && !isFromResize){
+    if (self.groups.length == 1 && isFirstGraph){
         config.barOffset.grouped.height = config.barOffset.grouped.height+8;
         config.barOffset.stacked.height = config.barOffset.stacked.height+8;
     }
@@ -651,7 +651,7 @@ monarch.dovechart.prototype.drawGraph = function (histogram, isFromCrumb, parent
     
     self.changeScalePerSettings(histogram);
     
-    self.setXYDomains(histogram, data, self.groups);
+    histogram.setXYDomains(data, self.groups);
     if (isFirstGraph){
         histogram.setXTicks(config).setYTicks();
     }
@@ -985,11 +985,11 @@ monarch.dovechart.prototype.setBarConfigPerCheckBox = function(histogram, data, 
     self = this;
 
     if (jQuery(self.html_div + ' input[name=mode]:checked').val()=== 'grouped' || groups.length === 1) {
-        self.setXYDomains(histogram,data,groups,'grouped');
+        histogram.setXYDomains(data,groups,'grouped');
         histogram.transitionXAxisToNewScale(1000);
         return self.makeBar(barGroup,histogram,'grouped',isFirstGraph);
     } else {     
-        self.setXYDomains(histogram,data,groups,'stacked');
+        histogram.setXYDomains(data,groups,'stacked');
         histogram.transitionXAxisToNewScale(1000);
         return self.makeBar(barGroup,histogram,'stacked',isFirstGraph);
     }
@@ -1135,20 +1135,6 @@ monarch.dovechart.prototype.getDataAndTransitionOnClick = function(node, histogr
 //The functions below manipulate the data object for
 //various functionality
 //
-
-//get X Axis limit for grouped configuration
-monarch.dovechart.prototype.getGroupMax = function(data){
-      return d3.max(data, function(d) { 
-          return d3.max(d.counts, function(d) { return d.value; });
-      });
-};
-
-//get X Axis limit for stacked configuration
-monarch.dovechart.prototype.getStackMax = function(data){
-      return d3.max(data, function(d) { 
-          return d3.max(d.counts, function(d) { return d.x1; });
-      }); 
-};
 
 //get largest Y axis label for font resizing
 monarch.dovechart.prototype.getYMax = function(data){
