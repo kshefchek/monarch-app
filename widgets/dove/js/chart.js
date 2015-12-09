@@ -36,8 +36,8 @@ monarch.chart = function(config, html_div, svg_class){
      * 
      * y1 is used for setting positioning within a single group
      * in a grouped barchart view, 
-     * see monarch.dovechart.setXYDomains() and 
-     * monarch.chart.barcharts.makeHorizontalGroupedBars() and
+     * see monarch.chart.barchart.setXYDomains() and 
+     * monarch.chart.barchart.makeHorizontalGroupedBars() and
      */
     self.y1 = d3.scale.ordinal();
     
@@ -77,6 +77,21 @@ monarch.chart = function(config, html_div, svg_class){
      */
     self.svg = d3.select(html_div).select('.'+svg_class).select('g');
 };
+
+/* 
+ * Initialize/set X ordinal scale
+ */
+monarch.chart.prototype.setXOrdinalDomain = function (groups, width) {
+    var self = this;
+    
+    self.x = d3.scale.ordinal()
+        .domain(groups)
+        .rangeRoundBands([0,width], .1);
+    
+    self.xAxis = d3.svg.axis()
+        .scale(self.x)
+        .orient("top");
+}
 
 monarch.chart.prototype.setXTicks = function(config) {
     var self = this;

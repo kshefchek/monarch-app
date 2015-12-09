@@ -41,11 +41,20 @@
    cursor:default;
 }
 .settings{
-   border: 1px solid #ddd;
+   border: 2px solid #ddd;
    display: inline;
    right:0;
+   padding:10px;
    margin-right: 5px;
    position:absolute;
+}
+.options{
+   font-size:10pt;
+   padding-top: 5px;
+    display:block;
+}
+.layout{
+	font-size:10pt;
 }
 .configure {
 	padding-right:5px;

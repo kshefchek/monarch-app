@@ -16,6 +16,7 @@ monarch.chart.heatmap = function(config, html_div, svg_class) {
     var self = this;
     monarch.chart.call(this, config, html_div, svg_class);
     
+    self._is_a = 'heatmap';
     self.x = d3.scale.ordinal()
         .rangeRoundBands([0,config.width], .1);
     
@@ -34,25 +35,15 @@ monarch.chart.heatmap = function(config, html_div, svg_class) {
 monarch.chart.heatmap.prototype = Object.create(monarch.chart.prototype);
 
 //Adds svg:rect element for each color well in the matrix
-monarch.chart.heatmap.prototype.setXYDomains = function (data, groups, width) {
+monarch.chart.heatmap.prototype.setXYDomains = function (data, groups) {
     var self = this;
-
-    self.x = d3.scale.ordinal()
-    .domain(groups)
-        .rangeRoundBands([0,width], 1);
-    
-    self.xAxis = d3.svg.axis()
-        .scale(self.x)
-        .orient("top");
     
     self.y0.domain(data.map(function(d) { return d.id; }));
     self.y1.domain(groups).rangeRoundBands([0,0]);
     
-
-    
     var xGroupMax = self.getGroupMax(data);
     self.color.domain([self.x0, xGroupMax]);
-}
+};
 
 // Adds svg:rect element for each color well in the matrix
 //monarch.chart.heatmap.prototype.makeColorWells = function (barGroup, htmlClass, scale) {
@@ -66,12 +57,12 @@ monarch.chart.heatmap.prototype.makeHorizontalStackedBars = function (barGroup, 
           .enter().append("rect")
           .attr("class", htmlClass)
            .style("fill", function(d) { return self.color(d.value); })
-          .attr("height", self.y0.rangeBand())
+          .attr("height", self.y0.rangeBand()-2)
           .attr("y", function(d) { return self.y1(d.name); })
-          /*.attr("x", function(d){
-                return self.x(d);
-           })*/
-           .attr("width", 15);
+          .attr("x", function(d){
+                return self.x(d.name)+2;
+           })
+           .attr("width", 11);
     
     return barSelection;
 }

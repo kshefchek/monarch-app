@@ -18,6 +18,8 @@ monarch.chart.barchart = function(config, html_div, svg_class) {
     var self = this;
     monarch.chart.call(this, config, html_div, svg_class);
     
+    self._is_a = 'barchart';
+    
     //Bar colors
     var barColors = config.color.bars;
     self.color = d3.scale.ordinal()
@@ -102,23 +104,23 @@ monarch.chart.barchart.prototype.makeHorizontalStackedBars = function(barGroup, 
     return barSelection;
 };
 
-monarch.chart.barchart.prototype.setXYDomains = function (data, groups, config) {
+monarch.chart.barchart.prototype.setXYDomains = function (data, groups, layout) {
     var self = this;
     //Set y0 domain
     self.y0.domain(data.map(function(d) { return d.id; }));
     
-    if (typeof config === 'undefined') {
+    if (typeof layout === 'undefined') {
         //fallback in case this option has not been passed
-        config = jQuery(self.html_div + ' input[name=mode]:checked').val();
+        layout = jQuery(self.html_div + ' input[name=mode]:checked').val();
     }
     
     //TODO improve checking of stacked/grouped configuration
-    if (config === 'grouped' || groups.length === 1){
+    if (layout === 'grouped' || groups.length === 1){
         var xGroupMax = self.getGroupMax(data);
         self.x.domain([self.x0, xGroupMax]);
         self.y1.domain(groups)
             .rangeRoundBands([0, self.y0.rangeBand()]);
-    } else if (config === 'stacked'){
+    } else if (layout === 'stacked'){
         var xStackMax = self.getStackMax(data);
         self.x.domain([self.x0, xStackMax]);
         self.y1.domain(groups).rangeRoundBands([0,0]);

@@ -163,7 +163,7 @@ monarch.dovechart.prototype.makeGraphDOM = function(html_div, data, svg_class){
 
 monarch.dovechart.prototype.makeLogScaleCheckBox = function (html_div){
     var config = this.config;
-    jQuery(html_div+" .interaction li .settings").append(" <form class=scale"+
+    jQuery(html_div+" .interaction li .settings").append("<span class=\"options\">Settings</span> <form class=scale"+
         " style=font-size:" + config.settingsFontSize + "; >" +
         "<label><input type=\"checkbox\" name=\"scale\"" +
         " value=\"log\"> Log Scale</label> " +
@@ -172,12 +172,15 @@ monarch.dovechart.prototype.makeLogScaleCheckBox = function (html_div){
 
 monarch.dovechart.prototype.makeGroupedStackedForm = function(html_div){
     var config = this.config;
-    jQuery(html_div+" .interaction li .settings").append(" <form class=configure"+
+    jQuery(html_div+" .interaction li .settings").append("<span class=\"layout\">Layout</span>" +
+        " <form class=configure"+
         " style=font-size:" + config.settingsFontSize + "; >" +
         "<label><input id=\"stack\" type=\"radio\" name=\"mode\"" +
-        " value=\"stacked\" checked> Stacked</label> " +
+        " value=\"stacked\" checked> Stacked Barchart</label><br> " +
         "<label><input id=\"group\" type=\"radio\" name=\"mode\"" +
-        " value=\"grouped\"> Grouped</label>" +
+        " value=\"grouped\"> Grouped Barchart</label><br>" +
+        "<label><input id=\"heatmap\" type=\"radio\" name=\"mode\"" +
+        " value=\"heatmap\"> Heatmap</label>" +
         "</form>");
 }
 
@@ -624,11 +627,23 @@ monarch.dovechart.prototype.drawGraph = function (histogram, isFromCrumb, parent
     
     self.changeScalePerSettings(histogram);
     
-    histogram.setXYDomains(data, self.groups);
+    var layout = self.getValueOfCheckbox('mode');
+    histogram.setXYDomains(data, self.groups, layout);
+    
+    if (histogram._is_a === 'heatmap' && isFirstGraph) {
+        // Initialize ordinal scale
+        histogram.setXOrdinalDomain(self.groups, config.width);
+    }
+    
     if (isFirstGraph){
         histogram.setXTicks(config).setYTicks();
     }
-
+    
+    if (histogram._is_a === 'heatmap') {
+        // Adjust x axis labels
+        histogram.svg.select(".x.axis").selectAll(".tick").selectAll("text")
+            .attr("transform", "rotate(-50)" ).style("text-anchor", "start");
+    }
     //Dynamically decrease font size for large labels
     var yFontSize = self.adjustYAxisElements(data.length);
     
@@ -654,7 +669,7 @@ monarch.dovechart.prototype.drawGraph = function (histogram, isFromCrumb, parent
 
     var bar = self.setBarConfigPerCheckBox(histogram,data,self.groups,barGroup,showTransition);
     
-    self.setYAxisText(histogram,data, barGroup, bar, yFontSize);
+    self.setYAxisHandlers(histogram,data, barGroup, bar, yFontSize);
     
     //Create navigation arrow
     var navigate = histogram.svg.selectAll(".y.axis");
@@ -699,7 +714,7 @@ monarch.dovechart.prototype.drawGraph = function (histogram, isFromCrumb, parent
 //
 monarch.dovechart.prototype.setDataPerSettings = function(data){
     var self = this;
-    if (self.getValueOfCheckbox('zero','remove')){
+    if (self.checkValueOfCheckbox('zero','remove')){
         data = self.removeZeroCounts(data);
     }
     data = self.removeIdWithoutLabel(data);
@@ -707,7 +722,7 @@ monarch.dovechart.prototype.setDataPerSettings = function(data){
 }
 // Generic function to check the value of a checkbox given it's name
 // and value
-monarch.dovechart.prototype.getValueOfCheckbox = function(name,value){
+monarch.dovechart.prototype.checkValueOfCheckbox = function(name,value){
     var self = this;
     if (jQuery(self.html_div + ' input[name='+name+']:checked').val() === value){
         return true;
@@ -716,12 +731,26 @@ monarch.dovechart.prototype.getValueOfCheckbox = function(name,value){
     }
 };
 
+//Generic function to get the value of a checkbox given it's name
+monarch.dovechart.prototype.getValueOfCheckbox = function(name){
+    var self = this;
+    if (jQuery(self.html_div + ' input[name='+name+']:checked').val() != null){
+        return jQuery(self.html_div + ' input[name='+name+']:checked').val();
+    } else {
+        return false;
+    }
+};
+
 monarch.dovechart.prototype.changeScalePerSettings = function(histogram){
     var self = this;
-    if (self.getValueOfCheckbox('scale','log')){
-        histogram.setLogXScale(self.config.width);
-    } else {
-        histogram.setLinearXScale(self.config.width);
+    if (histogram._is_a === 'barchart') {
+        if (self.checkValueOfCheckbox('scale','log')){
+            histogram.setLogXScale(self.config.width);
+        } else {
+            histogram.setLinearXScale(self.config.width);
+        }
+    } else if (histogram._is_a === 'heatmap') {
+        //not implemented
     }
 };
 
@@ -731,9 +760,9 @@ monarch.dovechart.prototype.changeBarConfig = function(histogram, data, groups, 
         var barClass = '.bar' + (self.parents.length-1);
         bar = d3.select(self.html_div).selectAll(barClass).selectAll('rect');
     }
-    if (self.getValueOfCheckbox('mode','grouped')){
+    if (self.checkValueOfCheckbox('mode','grouped')){
         self.transitionGrouped(histogram,data,groups,bar);
-    } else if (self.getValueOfCheckbox('mode','stacked')) {
+    } else if (self.checkValueOfCheckbox('mode','stacked')) {
         self.transitionStacked(histogram,data,groups,bar);
     }
 };
@@ -968,7 +997,7 @@ monarch.dovechart.prototype.setBarConfigPerCheckBox = function(histogram, data, 
     }
 };
 
-monarch.dovechart.prototype.setYAxisText = function(histogram, data, barGroup, bar, yFont){
+monarch.dovechart.prototype.setYAxisHandlers= function(histogram, data, barGroup, bar, yFont){
     var self = this;
     config = self.config;
     
