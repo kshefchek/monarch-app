@@ -29,11 +29,11 @@ monarch.dovechart = function(config, tree, html_div, tree_builder){
     self.config.arrowOffset = {height: 21, width: -100};
     self.config.barOffset = {
                  grouped:{
-                    height: 95,
+                    height: 100,
                     width: 10
                   },
                   stacked:{
-                    height: 80
+                    height: 85
                   }
     };
     
@@ -59,7 +59,7 @@ monarch.dovechart = function(config, tree, html_div, tree_builder){
         self.groups = self.getGroups(data);
         var svg_class = "chart";
         self.makeGraphDOM(html_div, data, svg_class); 
-        var histogram = new monarch.chart.barchart(config, html_div, svg_class);
+        var histogram = new monarch.chart.heatmap(config, html_div, svg_class);
         var isFirstGraph = true;
         self.drawGraph(histogram, false, undefined, isFirstGraph);
     };
@@ -176,11 +176,11 @@ monarch.dovechart.prototype.makeGroupedStackedForm = function(html_div){
         " <form class=configure"+
         " style=font-size:" + config.settingsFontSize + "; >" +
         "<label><input id=\"stack\" type=\"radio\" name=\"mode\"" +
-        " value=\"stacked\" checked> Stacked Barchart</label><br> " +
+        " value=\"stacked\"> Stacked Barchart</label><br> " +
         "<label><input id=\"group\" type=\"radio\" name=\"mode\"" +
         " value=\"grouped\"> Grouped Barchart</label><br>" +
         "<label><input id=\"heatmap\" type=\"radio\" name=\"mode\"" +
-        " value=\"heatmap\"> Heatmap</label>" +
+        " value=\"heatmap\" checked > Heatmap</label>" +
         "</form>");
 }
 
@@ -294,7 +294,12 @@ monarch.dovechart.prototype.transitionToNewGraph = function(histogram, data, bar
     self = this;
     config = self.config;
     self.tooltip.style("display", "none");
-    histogram.svg.selectAll(".tick").remove();
+    if (histogram._is_a === 'barchart') {
+        histogram.svg.selectAll(".tick").remove();
+    } else {
+        histogram.svg.select('.y.axis').selectAll(".tick").remove();
+    }
+    
     
     if (typeof bar === 'undefined') {
         var barClass = '.bar' + (self.parents.length-1);
@@ -640,15 +645,15 @@ monarch.dovechart.prototype.drawGraph = function (histogram, isFromCrumb, parent
         histogram.setXTicks(config).setYTicks();
     }
     
-    if (histogram._is_a === 'heatmap') {
-        // Adjust x axis labels
-        histogram.svg.select(".x.axis").selectAll(".tick").selectAll("text")
-            .attr("transform", "rotate(-50)" ).style("text-anchor", "start");
-    }
     //Dynamically decrease font size for large labels
     var yFontSize = self.adjustYAxisElements(data.length);
     
     histogram.transitionYAxisToNewScale(1000);
+    
+    if (histogram._is_a === 'heatmap') {
+        // Adjust x axis labels, font size same as y labels
+        histogram.setXAxisLabels(-50, 5, -5, yFontSize);
+    }
     
     //Create SVG:G element that holds groups
     var htmlClass = "bar" + self.level;
@@ -986,15 +991,22 @@ monarch.dovechart.prototype.makeBreadcrumb = function(histogram, label, groups, 
 
 monarch.dovechart.prototype.setBarConfigPerCheckBox = function(histogram, data, groups, barGroup, isFirstGraph) {
     self = this;
+    var layout = self.getValueOfCheckbox('mode');
 
-    if (jQuery(self.html_div + ' input[name=mode]:checked').val()=== 'grouped' || groups.length === 1) {
-        histogram.setXYDomains(data,groups,'grouped');
-        histogram.transitionXAxisToNewScale(1000);
-        return self.makeBar(barGroup,histogram,'grouped',isFirstGraph);
-    } else {     
-        histogram.setXYDomains(data,groups,'stacked');
-        histogram.transitionXAxisToNewScale(1000);
-        return self.makeBar(barGroup,histogram,'stacked',isFirstGraph);
+    if (layout === 'grouped' || groups.length === 1) {
+        if (!isFirstGraph) {
+            histogram.setXYDomains(data, groups, layout);
+            histogram.transitionXAxisToNewScale(1000);
+        }
+        return self.makeBar(barGroup,histogram,layout,isFirstGraph);
+    } else if (layout === 'stacked')  {     
+        if (!isFirstGraph) {
+            histogram.setXYDomains(data,groups, layout);
+            histogram.transitionXAxisToNewScale(1000);
+        }
+        return self.makeBar(barGroup, histogram, layout, isFirstGraph);
+    } else if (layout === 'heatmap') {
+        return self.makeBar(barGroup, histogram, layout, isFirstGraph);
     }
 };
 
@@ -2491,6 +2503,19 @@ monarch.chart.prototype.setYAxisTextSpacing = function(dx){
       .selectAll("text")
       .attr("dx", dx);
 };
+
+//Adjusts the y axis labels in relation to axis ticks
+monarch.chart.prototype.setXAxisLabels = function(degreesRotation, x, y, fontSize){
+    var self = this;
+    self.svg.select('.x.axis')
+        .selectAll('text')
+        .attr("transform", "rotate(" + degreesRotation + ")" )
+        .attr("x", x )
+        .attr("y", y )
+        .style("font-size", fontSize) //Set the same size as y axis
+        .style("text-anchor", "start");
+};
+
 /*
  * Create a svg g element for each y axis tick mark
  * On a concrete level this is used to group rectangles for
@@ -2733,7 +2758,7 @@ monarch.chart.heatmap.prototype.setXYDomains = function (data, groups, layout) {
 monarch.chart.heatmap.prototype.makeHorizontalStackedBars = function (barGroup, htmlClass, scale) {
     var self = this;
 
-    //The g elements do not yet exists, selectAll creates
+    //The g elements do not yet exist, selectAll creates
     // a place holder
     var barSelection = barGroup.selectAll('g')
           .data(function(d) { return d.counts; })

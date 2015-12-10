@@ -16,7 +16,7 @@ bbop.monarch.phenotypeLandingConfig = {
         bread : {width:60, height: 25, offset:50, space: 1},
         
         //Chart margins    
-        margin : {top: 35, right: 63, bottom: 5, left: 175},
+        margin : {top: 40, right: 63, bottom: 5, left: 175},
         
         width : 250,
         height : 300,
@@ -145,7 +145,7 @@ bbop.monarch.geneLandingConfig = {
         bread : {width:60, height: 25, offset:50, space: 1},
         
         //Chart margins    
-        margin : {top: 35, right: 63, bottom: 5, left: 175},
+        margin : {top: 40, right: 63, bottom: 5, left: 175},
         
         width : 250,
         height : 300,
@@ -241,7 +241,7 @@ bbop.monarch.genotypeLandingConfig = {
         bread : {width:60, height: 25, offset:50, space: 1},
         
         //Chart margins    
-        margin : {top: 35, right: 63, bottom: 5, left: 175},
+        margin : {top: 40, right: 63, bottom: 5, left: 175},
         
         width : 250,
         height : 300,
@@ -336,7 +336,7 @@ bbop.monarch.modelLandingConfig = {
         bread : {width:60, height: 25, offset:50, space: 1},
         
         //Chart margins    
-        margin : {top: 35, right: 63, bottom: 5, left: 175},
+        margin : {top: 40, right: 63, bottom: 5, left: 175},
         
         width : 250,
         height : 300,
@@ -432,7 +432,7 @@ bbop.monarch.diseaseLandingConfig = {
       bread : {width:60, height: 25, offset:50, space: 1},
       
       //Chart margins    
-      margin : {top: 35, right: 63, bottom: 5, left: 175},
+      margin : {top: 40, right: 63, bottom: 5, left: 175},
       
       width : 250,
       height : 300,
@@ -541,7 +541,7 @@ bbop.monarch.homePageConfig = {
         bread : {width:60, height: 25, offset:50, space: 1},
         
         //Chart margins    
-        margin : {top: 35, right: 63, bottom: 5, left: 175},
+        margin : {top: 40, right: 63, bottom: 5, left: 175},
         
         width : 250,
         height : 300,

@@ -50,7 +50,7 @@ monarch.chart.heatmap.prototype.setXYDomains = function (data, groups, layout) {
 monarch.chart.heatmap.prototype.makeHorizontalStackedBars = function (barGroup, htmlClass, scale) {
     var self = this;
 
-    //The g elements do not yet exists, selectAll creates
+    //The g elements do not yet exist, selectAll creates
     // a place holder
     var barSelection = barGroup.selectAll('g')
           .data(function(d) { return d.counts; })

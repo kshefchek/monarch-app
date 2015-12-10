@@ -183,6 +183,19 @@ monarch.chart.prototype.setYAxisTextSpacing = function(dx){
       .selectAll("text")
       .attr("dx", dx);
 };
+
+//Adjusts the y axis labels in relation to axis ticks
+monarch.chart.prototype.setXAxisLabels = function(degreesRotation, x, y, fontSize){
+    var self = this;
+    self.svg.select('.x.axis')
+        .selectAll('text')
+        .attr("transform", "rotate(" + degreesRotation + ")" )
+        .attr("x", x )
+        .attr("y", y )
+        .style("font-size", fontSize) //Set the same size as y axis
+        .style("text-anchor", "start");
+};
+
 /*
  * Create a svg g element for each y axis tick mark
  * On a concrete level this is used to group rectangles for
