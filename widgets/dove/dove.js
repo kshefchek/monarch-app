@@ -2315,6 +2315,17 @@ monarch.builder.tree_builder.prototype.getDefaultConfig = function(){
  * with an x and y axis (so ruling out some chart types
  * such as pie charts)
  * 
+ * Defaults are set for horizontal charts,
+ * y0 and x are d3 scales which convert
+ * a series of data points to a position
+ * on the graph axes, and y1 which converts
+ * a series of groups to a position within
+ * a single y axis tick mark (for grouped barcharts)
+ * using domain and range functions
+ * API docs for these functions/objects can be found here
+ * https://github.com/mbostock/d3/wiki/Quantitative-Scales
+ * https://github.com/mbostock/d3/wiki/Ordinal-Scales
+ * 
  * Subclasses: barchart.js
  */
 
@@ -2324,7 +2335,8 @@ if (typeof monarch == 'undefined') { var monarch = {};}
 monarch.chart = function(config, html_div, svg_class){
     var self = this;
 
-    // Defaults are set for horizontal charts
+
+    
     
     /* self.y0
      * initialized as a scale object,
@@ -2637,7 +2649,7 @@ monarch.chart.barchart.prototype.makeHorizontalStackedBars = function(barGroup, 
     
     return barSelection;
 };
-
+// Sets domains for y0 (y axis),y1 (subdomain of a single tick/group), and x axis
 monarch.chart.barchart.prototype.setXYDomains = function (data, groups, layout) {
     var self = this;
     
@@ -2705,7 +2717,7 @@ monarch.chart.heatmap = function(config, html_div, svg_class) {
 //heatmap extends chart
 monarch.chart.heatmap.prototype = Object.create(monarch.chart.prototype);
 
-//Adds svg:rect element for each color well in the matrix
+//Sets domains for y0 (y axis) and y1 (subdomain of a single tick/group)
 monarch.chart.heatmap.prototype.setXYDomains = function (data, groups, layout) {
     var self = this;
     

@@ -34,7 +34,7 @@ monarch.chart.heatmap = function(config, html_div, svg_class) {
 //heatmap extends chart
 monarch.chart.heatmap.prototype = Object.create(monarch.chart.prototype);
 
-//Adds svg:rect element for each color well in the matrix
+//Sets domains for y0 (y axis) and y1 (subdomain of a single tick/group)
 monarch.chart.heatmap.prototype.setXYDomains = function (data, groups, layout) {
     var self = this;
     

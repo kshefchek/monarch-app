@@ -103,7 +103,7 @@ monarch.chart.barchart.prototype.makeHorizontalStackedBars = function(barGroup, 
     
     return barSelection;
 };
-
+// Sets domains for y0 (y axis),y1 (subdomain of a single tick/group), and x axis
 monarch.chart.barchart.prototype.setXYDomains = function (data, groups, layout) {
     var self = this;
     

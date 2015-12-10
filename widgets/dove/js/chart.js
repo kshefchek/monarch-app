@@ -7,6 +7,17 @@
  * with an x and y axis (so ruling out some chart types
  * such as pie charts)
  * 
+ * Defaults are set for horizontal charts,
+ * y0 and x are d3 scales which convert
+ * a series of data points to a position
+ * on the graph axes, and y1 which converts
+ * a series of groups to a position within
+ * a single y axis tick mark (for grouped barcharts)
+ * using domain and range functions
+ * API docs for these functions/objects can be found here
+ * https://github.com/mbostock/d3/wiki/Quantitative-Scales
+ * https://github.com/mbostock/d3/wiki/Ordinal-Scales
+ * 
  * Subclasses: barchart.js
  */
 
@@ -16,7 +27,8 @@ if (typeof monarch == 'undefined') { var monarch = {};}
 monarch.chart = function(config, html_div, svg_class){
     var self = this;
 
-    // Defaults are set for horizontal charts
+
+    
     
     /* self.y0
      * initialized as a scale object,
