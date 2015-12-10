@@ -234,7 +234,7 @@ monarch.dovechart.prototype.makeLegend = function(histogram, barGroup){
             } else {
                 self.config.category_filter_list.push(d);
                 self.transitionToNewGraph(histogram, data, barGroup);
-                d3.select(this).style("opacity", '.5');
+                d3.select(this).style("opacity", '.4');
             }
         })
        .attr("transform", function(d, i) { return "translate(0," + i * (config.legend.height+7) + ")"; });
@@ -496,7 +496,7 @@ monarch.dovechart.prototype.transitionFromZero = function (bar, histogram, barLa
 monarch.dovechart.prototype.transitionGrouped = function (histogram, data, groups, bar) {
     var self = this;
     var config = self.config;
-    histogram.setXYDomains(data, groups);
+    histogram.setXYDomains(data, groups, 'grouped');
     histogram.transitionXAxisToNewScale(750);
           
     bar.transition()
@@ -628,6 +628,7 @@ monarch.dovechart.prototype.drawGraph = function (histogram, isFromCrumb, parent
     self.changeScalePerSettings(histogram);
     
     var layout = self.getValueOfCheckbox('mode');
+    
     histogram.setXYDomains(data, self.groups, layout);
     
     if (histogram._is_a === 'heatmap' && isFirstGraph) {
@@ -2519,6 +2520,18 @@ monarch.chart.prototype.getStackMax = function(data){
     return d3.max(data, function(d) { 
         return d3.max(d.counts, function(d) { return d.x1; });
     }); 
+};
+
+monarch.chart.prototype.getGroups = function(data) {
+    var groups = [];
+    var unique = {};
+    for (var i=0, len=data.length; i<len; i++) { 
+        for (var j=0, cLen=data[i].counts.length; j<cLen; j++) { 
+            unique[ data[i].counts[j].name ] =1;
+        }
+    }
+    groups = Object.keys(unique);
+    return groups;
 };/* 
  * Package: barchart.js
  * 
@@ -2627,6 +2640,11 @@ monarch.chart.barchart.prototype.makeHorizontalStackedBars = function(barGroup, 
 
 monarch.chart.barchart.prototype.setXYDomains = function (data, groups, layout) {
     var self = this;
+    
+    // Recalculate groups rather than operating on all groups
+    // in case some groups have been filtered out by the user
+    var selectedGroups = self.getGroups(data);
+    
     //Set y0 domain
     self.y0.domain(data.map(function(d) { return d.id; }));
     
@@ -2639,14 +2657,14 @@ monarch.chart.barchart.prototype.setXYDomains = function (data, groups, layout) 
     if (layout === 'grouped' || groups.length === 1){
         var xGroupMax = self.getGroupMax(data);
         self.x.domain([self.x0, xGroupMax]);
-        self.y1.domain(groups)
+        self.y1.domain(selectedGroups)
             .rangeRoundBands([0, self.y0.rangeBand()]);
     } else if (layout === 'stacked'){
         var xStackMax = self.getStackMax(data);
         self.x.domain([self.x0, xStackMax]);
-        self.y1.domain(groups).rangeRoundBands([0,0]);
+        self.y1.domain(selectedGroups).rangeRoundBands([0,0]);
     } else {
-        self.y1.domain(groups)
+        self.y1.domain(selectedGroups)
             .rangeRoundBands([0, self.y0.rangeBand()]);
     }
 };
@@ -2688,7 +2706,7 @@ monarch.chart.heatmap = function(config, html_div, svg_class) {
 monarch.chart.heatmap.prototype = Object.create(monarch.chart.prototype);
 
 //Adds svg:rect element for each color well in the matrix
-monarch.chart.heatmap.prototype.setXYDomains = function (data, groups) {
+monarch.chart.heatmap.prototype.setXYDomains = function (data, groups, layout) {
     var self = this;
     
     self.y0.domain(data.map(function(d) { return d.id; }));

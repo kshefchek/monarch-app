@@ -213,3 +213,15 @@ monarch.chart.prototype.getStackMax = function(data){
         return d3.max(d.counts, function(d) { return d.x1; });
     }); 
 };
+
+monarch.chart.prototype.getGroups = function(data) {
+    var groups = [];
+    var unique = {};
+    for (var i=0, len=data.length; i<len; i++) { 
+        for (var j=0, cLen=data[i].counts.length; j<cLen; j++) { 
+            unique[ data[i].counts[j].name ] =1;
+        }
+    }
+    groups = Object.keys(unique);
+    return groups;
+};

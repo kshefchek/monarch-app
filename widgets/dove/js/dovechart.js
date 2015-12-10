@@ -234,7 +234,7 @@ monarch.dovechart.prototype.makeLegend = function(histogram, barGroup){
             } else {
                 self.config.category_filter_list.push(d);
                 self.transitionToNewGraph(histogram, data, barGroup);
-                d3.select(this).style("opacity", '.5');
+                d3.select(this).style("opacity", '.4');
             }
         })
        .attr("transform", function(d, i) { return "translate(0," + i * (config.legend.height+7) + ")"; });
@@ -496,7 +496,7 @@ monarch.dovechart.prototype.transitionFromZero = function (bar, histogram, barLa
 monarch.dovechart.prototype.transitionGrouped = function (histogram, data, groups, bar) {
     var self = this;
     var config = self.config;
-    histogram.setXYDomains(data, groups);
+    histogram.setXYDomains(data, groups, 'grouped');
     histogram.transitionXAxisToNewScale(750);
           
     bar.transition()
@@ -628,6 +628,7 @@ monarch.dovechart.prototype.drawGraph = function (histogram, isFromCrumb, parent
     self.changeScalePerSettings(histogram);
     
     var layout = self.getValueOfCheckbox('mode');
+    
     histogram.setXYDomains(data, self.groups, layout);
     
     if (histogram._is_a === 'heatmap' && isFirstGraph) {

@@ -106,6 +106,11 @@ monarch.chart.barchart.prototype.makeHorizontalStackedBars = function(barGroup, 
 
 monarch.chart.barchart.prototype.setXYDomains = function (data, groups, layout) {
     var self = this;
+    
+    // Recalculate groups rather than operating on all groups
+    // in case some groups have been filtered out by the user
+    var selectedGroups = self.getGroups(data);
+    
     //Set y0 domain
     self.y0.domain(data.map(function(d) { return d.id; }));
     
@@ -118,14 +123,14 @@ monarch.chart.barchart.prototype.setXYDomains = function (data, groups, layout) 
     if (layout === 'grouped' || groups.length === 1){
         var xGroupMax = self.getGroupMax(data);
         self.x.domain([self.x0, xGroupMax]);
-        self.y1.domain(groups)
+        self.y1.domain(selectedGroups)
             .rangeRoundBands([0, self.y0.rangeBand()]);
     } else if (layout === 'stacked'){
         var xStackMax = self.getStackMax(data);
         self.x.domain([self.x0, xStackMax]);
-        self.y1.domain(groups).rangeRoundBands([0,0]);
+        self.y1.domain(selectedGroups).rangeRoundBands([0,0]);
     } else {
-        self.y1.domain(groups)
+        self.y1.domain(selectedGroups)
             .rangeRoundBands([0, self.y0.rangeBand()]);
     }
 };
