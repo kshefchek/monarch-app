@@ -21,3 +21,5 @@ echo "# Versions OK, continuing with installation."
 #./installRingo.sh
 npm install
 ./node_modules/.bin/gulp assemble
+rm -rf dist/*
+./node_modules/webpack/bin/webpack.js --config webpack.build.js --bail
