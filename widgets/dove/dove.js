@@ -196,7 +196,7 @@ monarch.dovechart.prototype.makeLegend = function(histogram, barGroup){
        .data(self.groups.slice())
        .enter().append("g")
        .attr("class", "legend")
-       .attr("class", function(d) {return "legend-"+d; })
+       //.attr("class", function(d) {return "legend-"+d; })
        .style("opacity", function(d) {
            if (self.config.category_filter_list.indexOf(d) > -1) {
                return '.5';
@@ -636,9 +636,14 @@ monarch.dovechart.prototype.drawGraph = function (histogram, isFromCrumb, parent
     
     histogram.setXYDomains(data, self.groups, layout);
     
-    if (histogram._is_a === 'heatmap' && isFirstGraph) {
-        // Initialize ordinal scale
+    if (histogram._is_a === 'heatmap') {
+        // Set ordinal scale
         histogram.setXOrdinalDomain(self.groups, config.width);
+        
+        //Set tick size to 0 (removes tick marks)
+        histogram.yAxis.tickSize(0);
+        histogram.xAxis.tickSize(0);
+        
     }
     
     if (isFirstGraph){
@@ -652,7 +657,12 @@ monarch.dovechart.prototype.drawGraph = function (histogram, isFromCrumb, parent
     
     if (histogram._is_a === 'heatmap') {
         // Adjust x axis labels, font size same as y labels
-        histogram.setXAxisLabels(-50, 5, -5, yFontSize);
+        // setXAxisLabels(degreesRotation, x, y, fontSize)
+        histogram.setXAxisLabels(-50, 5, 3, yFontSize);
+        
+        // Remove axis lines/paths
+        histogram.svg.selectAll(".axis").select("path")
+        .style('display', 'none');
     }
     
     //Create SVG:G element that holds groups
@@ -666,7 +676,7 @@ monarch.dovechart.prototype.drawGraph = function (histogram, isFromCrumb, parent
         showTransition = true;
     }
     //Make legend
-    if (isFirstGraph){
+    if (isFirstGraph && histogram._is_a === 'barchart'){
         //Create legend
         if (config.useLegend){
             self.makeLegend(histogram, barGroup);
@@ -2764,7 +2774,7 @@ monarch.chart.heatmap.prototype.makeHorizontalStackedBars = function (barGroup, 
           .data(function(d) { return d.counts; })
           .enter().append("rect")
           .attr("class", htmlClass)
-           .style("fill", function(d) { return self.color(d.value); })
+          //.style("fill", function(d) { return self.color(d.value); })
           .attr("height", self.y0.rangeBand()-2)
           .attr("y", function(d) { return self.y1(d.name); })
           .attr("x", function(d){

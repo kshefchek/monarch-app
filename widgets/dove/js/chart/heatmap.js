@@ -56,7 +56,7 @@ monarch.chart.heatmap.prototype.makeHorizontalStackedBars = function (barGroup, 
           .data(function(d) { return d.counts; })
           .enter().append("rect")
           .attr("class", htmlClass)
-           .style("fill", function(d) { return self.color(d.value); })
+          //.style("fill", function(d) { return self.color(d.value); })
           .attr("height", self.y0.rangeBand()-2)
           .attr("y", function(d) { return self.y1(d.name); })
           .attr("x", function(d){
