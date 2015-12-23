@@ -95,7 +95,7 @@ monarch.chart = function(config, html_div, svg_class){
  */
 monarch.chart.prototype.setXOrdinalDomain = function (groups, width) {
     var self = this;
-    
+
     self.x = d3.scale.ordinal()
         .domain(groups)
         .rangeRoundBands([0,width], .1);

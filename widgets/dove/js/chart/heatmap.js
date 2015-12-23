@@ -17,6 +17,8 @@ monarch.chart.heatmap = function(config, html_div, svg_class) {
     monarch.chart.call(this, config, html_div, svg_class);
     
     self._is_a = 'heatmap';
+    
+    //this is overridden in chart.setXOrdinalDomain()
     self.x = d3.scale.ordinal()
         .rangeRoundBands([0,config.width], .1);
     
@@ -25,9 +27,12 @@ monarch.chart.heatmap = function(config, html_div, svg_class) {
         .orient("top");
     
     //grid color range, hardcode for now
-    var gridColors = ['#a5d9d1', '#93d2c8', '#81cabf', '#6fc3b5',
-                      '#5dbbac', '#4bb4a3', '#44A293']; //5% darker: 3c9082
+    /*var gridColors = ['#a5d9d1', '#93d2c8', '#81cabf', '#6fc3b5',
+                      '#5dbbac', '#4bb4a3', '#44A293']; //5% darker: 3c9082  */
+    
+    var gridColors = ['#a5d9d1', '#44A293']; //5% darker: 3c9082
     self.color = d3.scale.linear()
+        //.domain([0,10])
         .range(gridColors);
 }
 
@@ -46,8 +51,7 @@ monarch.chart.heatmap.prototype.setXYDomains = function (data, groups, layout) {
 };
 
 // Adds svg:rect element for each color well in the matrix
-//monarch.chart.heatmap.prototype.makeColorWells = function (barGroup, htmlClass, scale) {
-monarch.chart.heatmap.prototype.makeHorizontalStackedBars = function (barGroup, htmlClass, scale) {
+monarch.chart.heatmap.prototype.makeColorWells = function (barGroup, htmlClass, scale) {
     var self = this;
 
     //The g elements do not yet exist, selectAll creates
@@ -56,11 +60,11 @@ monarch.chart.heatmap.prototype.makeHorizontalStackedBars = function (barGroup, 
           .data(function(d) { return d.counts; })
           .enter().append("rect")
           .attr("class", htmlClass)
-          //.style("fill", function(d) { return self.color(d.value); })
+          .style("fill", function(d) { console.log(self.color(d.value));return self.color(d.value); })
           .attr("height", self.y0.rangeBand()-2)
           .attr("y", function(d) { return self.y1(d.name); })
           .attr("x", function(d){
-                return self.x(d.name)+2;
+                return self.x(d.name) - 13;
            })
            .attr("width", 11);
     

@@ -638,7 +638,8 @@ monarch.dovechart.prototype.drawGraph = function (histogram, isFromCrumb, parent
     
     if (histogram._is_a === 'heatmap') {
         // Set ordinal scale
-        histogram.setXOrdinalDomain(self.groups, config.width);
+        var width = config.width - 55; //Hack to have chart form an even grid
+        histogram.setXOrdinalDomain(self.groups, width);
         
         //Set tick size to 0 (removes tick marks)
         histogram.yAxis.tickSize(0);
@@ -658,7 +659,7 @@ monarch.dovechart.prototype.drawGraph = function (histogram, isFromCrumb, parent
     if (histogram._is_a === 'heatmap') {
         // Adjust x axis labels, font size same as y labels
         // setXAxisLabels(degreesRotation, x, y, fontSize)
-        histogram.setXAxisLabels(-50, 5, 3, yFontSize);
+        histogram.setXAxisLabels(-50, 2, -1, yFontSize);
         
         // Remove axis lines/paths
         histogram.svg.selectAll(".axis").select("path")
@@ -667,7 +668,7 @@ monarch.dovechart.prototype.drawGraph = function (histogram, isFromCrumb, parent
     
     //Create SVG:G element that holds groups
     var htmlClass = "bar" + self.level;
-    var barGroup = histogram.setGroupPositioning(data, self.config, htmlClass);
+    var yAxisGroup = histogram.setGroupPositioning(data, self.config, htmlClass);
     
     // showTransition controls if a new view results in bars expanding
     // from zero to their respective positions
@@ -679,18 +680,24 @@ monarch.dovechart.prototype.drawGraph = function (histogram, isFromCrumb, parent
     if (isFirstGraph && histogram._is_a === 'barchart'){
         //Create legend
         if (config.useLegend){
-            self.makeLegend(histogram, barGroup);
+            self.makeLegend(histogram, yAxisGroup);
         }
     }
-
-    var bar = self.setBarConfigPerCheckBox(histogram,data,self.groups,barGroup,showTransition);
     
-    self.setYAxisHandlers(histogram,data, barGroup, bar, yFontSize);
+    if (histogram._is_a === 'barchart') {
+        //TODO rename this variable, are these selections?
+        var bar = self.setBarConfigPerCheckBox(histogram,data,self.groups,yAxisGroup,showTransition);
+        
+    } else if (histogram._is_a === 'heatmap') {
+        var bar = histogram.makeColorWells(yAxisGroup, htmlClass);
+    }
+    
+    self.setYAxisHandlers(histogram, data, yAxisGroup, bar, yFontSize);
     
     //Create navigation arrow
     var navigate = histogram.svg.selectAll(".y.axis");
     /*self.makeNavArrow(data,navigate,config.arrowDim,
-                           barGroup,bar,histogram);
+                           yAxisGroup,bar,histogram);
     if (!self.checkForChildren(data)){
         histogram.setYAxisTextSpacing(0);
         histogram.svg.selectAll("polygon.wedge").remove();
@@ -702,7 +709,7 @@ monarch.dovechart.prototype.drawGraph = function (histogram, isFromCrumb, parent
     //Make first breadcrumb
     if (config.useCrumb && isFirstGraph){
         self.makeBreadcrumb(histogram,self.tree.getRootLabel(),
-                                 self.groups,bar,barGroup);
+                                 self.groups,bar,yAxisGroup);
     }
     
     // Some functions to controll the configurations box
@@ -723,7 +730,7 @@ monarch.dovechart.prototype.drawGraph = function (histogram, isFromCrumb, parent
     
     d3.select(self.html_div).select('.zero')
     .on("change",function(){
-        self.transitionToNewGraph(histogram,data,barGroup,bar);
+        self.transitionToNewGraph(histogram,data,yAxisGroup,bar);
     });
 };
 
@@ -2425,7 +2432,7 @@ monarch.chart = function(config, html_div, svg_class){
  */
 monarch.chart.prototype.setXOrdinalDomain = function (groups, width) {
     var self = this;
-    
+
     self.x = d3.scale.ordinal()
         .domain(groups)
         .rangeRoundBands([0,width], .1);
@@ -2735,6 +2742,8 @@ monarch.chart.heatmap = function(config, html_div, svg_class) {
     monarch.chart.call(this, config, html_div, svg_class);
     
     self._is_a = 'heatmap';
+    
+    //this is overridden in chart.setXOrdinalDomain()
     self.x = d3.scale.ordinal()
         .rangeRoundBands([0,config.width], .1);
     
@@ -2743,9 +2752,12 @@ monarch.chart.heatmap = function(config, html_div, svg_class) {
         .orient("top");
     
     //grid color range, hardcode for now
-    var gridColors = ['#a5d9d1', '#93d2c8', '#81cabf', '#6fc3b5',
-                      '#5dbbac', '#4bb4a3', '#44A293']; //5% darker: 3c9082
+    /*var gridColors = ['#a5d9d1', '#93d2c8', '#81cabf', '#6fc3b5',
+                      '#5dbbac', '#4bb4a3', '#44A293']; //5% darker: 3c9082  */
+    
+    var gridColors = ['#a5d9d1', '#44A293']; //5% darker: 3c9082
     self.color = d3.scale.linear()
+        //.domain([0,10])
         .range(gridColors);
 }
 
@@ -2764,8 +2776,7 @@ monarch.chart.heatmap.prototype.setXYDomains = function (data, groups, layout) {
 };
 
 // Adds svg:rect element for each color well in the matrix
-//monarch.chart.heatmap.prototype.makeColorWells = function (barGroup, htmlClass, scale) {
-monarch.chart.heatmap.prototype.makeHorizontalStackedBars = function (barGroup, htmlClass, scale) {
+monarch.chart.heatmap.prototype.makeColorWells = function (barGroup, htmlClass, scale) {
     var self = this;
 
     //The g elements do not yet exist, selectAll creates
@@ -2774,11 +2785,11 @@ monarch.chart.heatmap.prototype.makeHorizontalStackedBars = function (barGroup, 
           .data(function(d) { return d.counts; })
           .enter().append("rect")
           .attr("class", htmlClass)
-          //.style("fill", function(d) { return self.color(d.value); })
+          .style("fill", function(d) { console.log(self.color(d.value));return self.color(d.value); })
           .attr("height", self.y0.rangeBand()-2)
           .attr("y", function(d) { return self.y1(d.name); })
           .attr("x", function(d){
-                return self.x(d.name)+2;
+                return self.x(d.name) - 13;
            })
            .attr("width", 11);
     
