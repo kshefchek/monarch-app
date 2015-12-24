@@ -60,7 +60,12 @@ monarch.chart.heatmap.prototype.makeColorWells = function (barGroup, htmlClass, 
           .data(function(d) { return d.counts; })
           .enter().append("rect")
           .attr("class", htmlClass)
-          .style("fill", function(d) { console.log(self.color(d.value));return self.color(d.value); })
+          .style("fill", function(d) { 
+              console.log(self.color(d.value));
+              if (d.value === 0) {
+                  return "#E0E0E0";
+              }
+              return self.color(d.value); })
           .attr("height", self.y0.rangeBand()-2)
           .attr("y", function(d) { return self.y1(d.name); })
           .attr("x", function(d){

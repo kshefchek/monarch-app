@@ -659,7 +659,7 @@ monarch.dovechart.prototype.drawGraph = function (histogram, isFromCrumb, parent
     if (histogram._is_a === 'heatmap') {
         // Adjust x axis labels, font size same as y labels
         // setXAxisLabels(degreesRotation, x, y, fontSize)
-        histogram.setXAxisLabels(-50, 2, -1, yFontSize);
+        histogram.setXAxisLabels(-50, 2, -1, "1.1em");
         
         // Remove axis lines/paths
         histogram.svg.selectAll(".axis").select("path")
@@ -797,7 +797,7 @@ monarch.dovechart.prototype.resizeChart = function(data){
     var height = config.height;
 
     if (data.length < 25){
-         height = data.length*26; 
+         height = data.length*(config.height/20); 
          if (height > config.height){
              height = config.height;
          }
