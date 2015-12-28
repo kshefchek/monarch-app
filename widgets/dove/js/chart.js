@@ -192,6 +192,7 @@ monarch.chart.prototype.setXAxisLabels = function(degreesRotation, x, y, fontSiz
         .attr("transform", "rotate(" + degreesRotation + ")" )
         .attr("x", x )
         .attr("y", y )
+        .attr("dy", "-3" )
         .style("font-size", fontSize) //Set the same size as y axis
         .style("text-anchor", "start");
 };

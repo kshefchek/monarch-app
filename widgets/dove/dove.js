@@ -638,7 +638,7 @@ monarch.dovechart.prototype.drawGraph = function (histogram, isFromCrumb, parent
     
     if (histogram._is_a === 'heatmap') {
         // Set ordinal scale
-        var width = config.width - 55; //Hack to have chart form an even grid
+        var width = config.width + 60; //Hack to have chart form an even grid
         histogram.setXOrdinalDomain(self.groups, width);
         
         //Set tick size to 0 (removes tick marks)
@@ -647,7 +647,7 @@ monarch.dovechart.prototype.drawGraph = function (histogram, isFromCrumb, parent
         
     }
     
-    if (isFirstGraph){
+    if (isFirstGraph) {
         histogram.setXTicks(config).setYTicks();
     }
     
@@ -659,7 +659,7 @@ monarch.dovechart.prototype.drawGraph = function (histogram, isFromCrumb, parent
     if (histogram._is_a === 'heatmap') {
         // Adjust x axis labels, font size same as y labels
         // setXAxisLabels(degreesRotation, x, y, fontSize)
-        histogram.setXAxisLabels(-50, 2, -1, "1.1em");
+        histogram.setXAxisLabels(-40, 6, 9, "1.3em");
         
         // Remove axis lines/paths
         histogram.svg.selectAll(".axis").select("path")
@@ -2529,6 +2529,7 @@ monarch.chart.prototype.setXAxisLabels = function(degreesRotation, x, y, fontSiz
         .attr("transform", "rotate(" + degreesRotation + ")" )
         .attr("x", x )
         .attr("y", y )
+        .attr("dy", "-3" )
         .style("font-size", fontSize) //Set the same size as y axis
         .style("text-anchor", "start");
 };
@@ -2796,7 +2797,7 @@ monarch.chart.heatmap.prototype.makeColorWells = function (barGroup, htmlClass, 
           .attr("x", function(d){
                 return self.x(d.name) - 13;
            })
-           .attr("width", 11);
+           .attr("width", 21);
     
     return barSelection;
 }

@@ -71,7 +71,7 @@ monarch.chart.heatmap.prototype.makeColorWells = function (barGroup, htmlClass, 
           .attr("x", function(d){
                 return self.x(d.name) - 13;
            })
-           .attr("width", 11);
+           .attr("width", 21);
     
     return barSelection;
 }
