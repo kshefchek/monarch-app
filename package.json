@@ -5,16 +5,15 @@
   "description": "Monarch web application and API.",
   "main": "lib/monarch/web/webapp_launcher.js",
   "scripts": {
-    "brun": "npm run build && npm run bstart",
-    "build": "rm -rf dist/* && node_modules/webpack/bin/webpack.js --config webpack.build.js --bail -p",
-    "fastbuild": "node_modules/webpack/bin/webpack.js --config webpack.build.js --bail -d",
+    "analyze": "rm -rf dist/* && node_modules/webpack/bin/webpack.js --config webpack.build.js --bail --json | analyze-bundle-size",
+    "brun": "npm run build && npm run start",
+    "build": "rm -rf dist/* && node_modules/webpack/bin/webpack.js --config webpack.build.js --bail",
     "start": "NODE_PATH=lib/monarch node lib/monarch/web/webapp_launcher.js",
-    "bstart": "USE_BUNDLE=1 NODE_PATH=lib/monarch node lib/monarch/web/webapp_launcher.js",
-    "rstart": "./ringo-server.sh",
-    "dev": "USE_BUNDLE=1 USE_WEBPACK=1 NODE_PATH=lib/monarch node_modules/nodemon/bin/nodemon.js -d 2 -V -- lib/monarch/web/webapp_launcher.js & node node_modules/.bin/webpack-dev-server --port 8081 --history-api-fallback --hot --inline",
-    "corstest": "USE_LOG_FETCH=1 USE_BUNDLE=1 USE_WEBPACK=1 NODE_PATH=lib/monarch nodemon -d 2 -V -- lib/monarch/web/webapp_launcher.js CORSTest & node node_modules/.bin/webpack-dev-server --port 8081 --history-api-fallback --hot --inline",
+    "oldstart": "NODE_PATH=lib/monarch USE_BUNDLE=0 node lib/monarch/web/webapp_launcher.js",
+    "dev": "scripts/runWebpackDevServer.sh",
+    "devp": "scripts/runWebpackDevServer.sh production",
+    "corstest": "USE_LOG_FETCH=1 USE_WEBPACK=1 NODE_PATH=lib/monarch nodemon -d 2 -V -- lib/monarch/web/webapp_launcher.js CORSTest & node node_modules/.bin/webpack-dev-server --port 8081",
     "test": "make test",
-    "rtest": "make -f MakefileRingo test",
     "lint": "node_modules/.bin/eslint js/ lib/monarch || exit 0"
   },
   "keywords": [
@@ -46,7 +45,7 @@
     "jquery": "^2.1.4",
     "jquery-ui": "^1.10.5",
     "mustache": "^2.2.0",
-    "phenogrid": "^1.2.3",
+    "phenogrid": "^1.2.4",
     "pup-tent": "^0.9.10",
     "querystring": "^0.2.0",
     "request": "^2.65.0",
@@ -59,6 +58,7 @@
     "xmlbuilder": "^4.1.0"
   },
   "devDependencies": {
+    "assets-webpack-plugin": "^3.2.0",
     "autoprefixer": "^6.1.0",
     "babel-core": "^6.2.1",
     "babel-eslint": "^4.1.5",
