@@ -27,9 +27,6 @@ if (typeof monarch == 'undefined') { var monarch = {};}
 monarch.chart = function(config, html_div, svg_class){
     var self = this;
 
-
-    
-    
     /* self.y0
      * initialized as a scale object,
      * for example a d3.scale.ordinal(), 

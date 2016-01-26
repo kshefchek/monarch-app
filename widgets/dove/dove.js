@@ -1,3 +1,1181 @@
+
+/* 
+ * Package: chart.js
+ * 
+ * Namespace: monarch.chart
+ * 
+ * Generic chart class, a chart being defined as a chart
+ * with an x and y axis (so ruling out some chart types
+ * such as pie charts)
+ * 
+ * Defaults are set for horizontal charts,
+ * y0 and x are d3 scales which convert
+ * a series of data points to a position
+ * on the graph axes, and y1 which converts
+ * a series of groups to a position within
+ * a single y axis tick mark (for grouped barcharts)
+ * using domain and range functions
+ * API docs for these functions/objects can be found here
+ * https://github.com/mbostock/d3/wiki/Quantitative-Scales
+ * https://github.com/mbostock/d3/wiki/Ordinal-Scales
+ * 
+ * Subclasses: barchart.js
+ */
+
+// Module and namespace checking.
+if (typeof monarch == 'undefined') { var monarch = {};}
+
+monarch.chart = function(config, html_div, svg_class){
+    var self = this;
+
+
+    
+    
+    /* self.y0
+     * initialized as a scale object,
+     * for example a d3.scale.ordinal(), 
+     * which manages a set of discrete values
+     * 
+     * y0 is used to set the y axis domain
+     * and positioning of elements such as 
+     * horizontal bars
+     */
+    self.y0 = d3.scale.ordinal()
+        .rangeRoundBands([0,config.height], .1);
+    
+    /* self.y1
+     * initialized as a scale object,
+     * for example a d3.scale.ordinal()
+     * 
+     * y1 is used for setting positioning within a single group
+     * in a grouped barchart view, 
+     * see monarch.chart.barchart.setXYDomains() and 
+     * monarch.chart.barchart.makeHorizontalGroupedBars() and
+     */
+    self.y1 = d3.scale.ordinal();
+    
+    // Lower value of the x axis domain
+    // Defaults to 0, and is set to .1 for log scales
+    self.x0 = 0;
+
+    /* self.x is a scale object, as
+     * a default a d3.scale.linear which is both
+     * an object and a function,
+     * for example, this is used to set
+     * the domain and range of the x axis and convert
+     * count values to rect width attributes in barcharts
+     */ 
+    self.x = d3.scale.linear()
+        .range([self.x0, config.width]);
+
+    self.xAxis = d3.svg.axis()
+        .scale(self.x)
+        .orient("top")
+        .tickFormat(d3.format(".2s"));
+
+    self.yAxis = d3.svg.axis()
+        .scale(self.y0)
+        .orient("left");
+    
+    self.html_div = html_div;
+
+    /* Selects the g element for the entire chart, 
+     * the direct child of the svg element
+     * this requires setting up a DOM with the structure
+     *  <div class="html_div">
+     *    <svg>
+     *      <g>
+     *      
+     * TODO: initialize DOM if this fails
+     */
+    self.svg = d3.select(html_div).select('.'+svg_class).select('g');
+};
+
+/* 
+ * Initialize/set X ordinal scale
+ */
+monarch.chart.prototype.setXOrdinalDomain = function (groups, width) {
+    var self = this;
+
+    self.x = d3.scale.ordinal()
+        .domain(groups)
+        .rangeRoundBands([0,width], .1);
+    
+    self.xAxis = d3.svg.axis()
+        .scale(self.x)
+        .orient("top");
+}
+
+monarch.chart.prototype.setXTicks = function(config) {
+    var self = this;
+    //Set x axis tick marks
+    self.svg.append("g")
+        .attr("class", "x axis")
+        .call(self.xAxis)
+        .style("font-size", config.xFontSize)
+        .append("text")
+        .attr("transform", "rotate(0)")
+        .attr("y", config.xAxisPos.y)
+        .attr("dx", config.xAxisPos.dx)
+        .attr("dy", "0em")
+        .style("text-anchor", "end")
+        .style("font-size",config.xLabelFontSize)
+        .text(config.xAxisLabel);
+    
+    return self;
+};
+
+monarch.chart.prototype.setYTicks = function() {
+    var self = this;
+    //Set Y axis tick marks
+    self.svg.append("g")
+        .attr("class", "y axis")
+        .call(self.yAxis);
+    
+    return self;
+}
+
+monarch.chart.prototype.setLinearXScale = function(width) {
+    var self = this;
+    self.x0 = 0;
+    
+    self.x = d3.scale.linear()
+        .range([self.x0, width]);
+
+    self.xAxis = d3.svg.axis()
+        .scale(self.x)
+        .orient("top")
+        .tickFormat(d3.format(".2s"));
+    
+    return self;
+};
+
+monarch.chart.prototype.setLogXScale = function(width) {
+    var self = this;
+    self.x0 = .1;
+    
+    self.x = d3.scale.log()
+        .range([self.x0, width]);
+
+    self.xAxis = d3.svg.axis()
+        .scale(self.x)
+        .orient("top")
+        .ticks(5);
+    
+    return self;
+};
+
+monarch.chart.prototype.transitionYAxisToNewScale = function(duration) {
+    var self = this;
+    self.svg.transition().duration(duration)
+        .select(".y.axis").call(self.yAxis);
+};
+
+monarch.chart.prototype.transitionXAxisToNewScale = function(duration) {
+    var self = this;
+    self.svg.transition()
+        .duration(duration).select(".x.axis").call(self.xAxis);
+};
+
+//Adjusts the y axis labels in relation to axis ticks
+monarch.chart.prototype.setYAxisTextSpacing = function(dx){
+    var self = this;
+    self.svg.select(".y.axis")
+      .selectAll("text")
+      .attr("dx", dx);
+};
+
+//Adjusts the y axis labels in relation to axis ticks
+monarch.chart.prototype.setXAxisLabels = function(degreesRotation, x, y, fontSize){
+    var self = this;
+    self.svg.select('.x.axis')
+        .selectAll('text')
+        .attr("transform", "rotate(" + degreesRotation + ")" )
+        .attr("x", x )
+        .attr("y", y )
+        .attr("dy", "-3" )
+        .style("font-size", fontSize) //Set the same size as y axis
+        .style("text-anchor", "start");
+};
+
+/*
+ * Create a svg g element for each y axis tick mark
+ * On a concrete level this is used to group rectangles for
+ * different views (stacked/grouped bars, heatmaps)
+ * 
+ * Returns: d3.selection
+ */
+monarch.chart.prototype.setGroupPositioning = function (data, config, htmlClass) {
+    var self = this;
+
+    var groupPos = self.svg.selectAll()
+       .data(data)
+       .enter().append("svg:g")
+       .attr("class", htmlClass)
+       .attr("transform", function(d) { return "translate(0," + self.y0(d.id) + ")"; })
+       .on("click", function(d){
+           if (config.isYLabelURL){
+               document.location.href = config.yLabelBaseURL + d.id;
+           }
+       });
+    return groupPos;
+};
+
+/* Get X Axis limit for grouped configuration
+ * Could be refactored into a class that defines
+ * a group of siblings
+ */
+monarch.chart.prototype.getGroupMax = function(data){
+    return d3.max(data, function(d) { 
+        return d3.max(d.counts, function(d) { return d.value; });
+    });
+};
+
+/* Get X Axis limit for stacked configuration
+ * Could be refactored into a class that defines
+ * a group of siblings
+ */
+monarch.chart.prototype.getStackMax = function(data){
+    return d3.max(data, function(d) { 
+        return d3.max(d.counts, function(d) { return d.x1; });
+    }); 
+};
+
+monarch.chart.prototype.getGroups = function(data) {
+    var groups = [];
+    var unique = {};
+    for (var i=0, len=data.length; i<len; i++) { 
+        for (var j=0, cLen=data[i].counts.length; j<cLen; j++) { 
+            unique[ data[i].counts[j].name ] =1;
+        }
+    }
+    groups = Object.keys(unique);
+    return groups;
+};
+/* 
+ * Package: barchart.js
+ * 
+ * Namespace: monarch.chart.barchart
+ * 
+ * Class to create different types of barcharts,
+ * horizontal stacked, grouped, and simple barcharts
+ * are implemented
+ * 
+ * Parents: chart.js
+ */
+
+// Module and namespace checking.
+if (typeof monarch == 'undefined') { var monarch = {};}
+if (typeof monarch.chart == 'undefined') { monarch.chart = {};}
+
+monarch.chart.barchart = function(config, html_div, svg_class) {
+    var self = this;
+    monarch.chart.call(this, config, html_div, svg_class);
+    
+    self._is_a = 'barchart';
+    
+    //Bar colors
+    var barColors = config.color.bars;
+    self.color = d3.scale.ordinal()
+        .range(Object.keys(barColors).map(function(k) { return barColors[k] }));
+}
+
+//barchart extends chart
+monarch.chart.barchart.prototype = Object.create(monarch.chart.prototype);
+
+/*
+ * Makes svg rectangles in a grouped bar layout
+ * Args
+ *   - barGroup: d3.selection of each svg g element to hold the bars, with
+ *               data bound to each element
+ *               for example the output from chart.setGroupPositioning()
+ * 
+ * Returns d3.selection
+ */
+monarch.chart.barchart.prototype.makeHorizontalGroupedBars = function(barGroup, htmlClass, scale) {
+    var self = this;
+    
+    //The g elements do not yet exists, selectAll creates
+    // a place holder
+    var barSelection = barGroup.selectAll('g')
+        .data(function(d) { return d.counts; })
+        .enter().append("rect")
+        .attr("class", htmlClass)
+        .style("fill", function(d) { return self.color(d.name); })
+        .attr("height", self.y1.rangeBand())
+        .attr("y", function(d) { return self.y1(d.name); })
+        .attr("x", 1)
+        .attr("width", function(d) { 
+            if ((scale === 'log' ) && ( d.value == 0 )){
+              return 1;
+            } else {
+              return self.x(d.value); 
+            }
+         });
+    
+    return barSelection;
+};
+
+/*
+ * Makes horizontal svg rectangles in a stacked bar layout
+ * Args
+ *   - barGroup: d3.selection of each svg g element to hold the bars, with
+ *               data bound to each element
+ *               for example the output from chart.setGroupPositioning()
+ * 
+ * Returns d3.selection
+ */
+monarch.chart.barchart.prototype.makeHorizontalStackedBars = function(barGroup, htmlClass, scale) {
+    var self = this;
+    
+    //The g elements do not yet exists, selectAll creates
+    // a place holder
+    var barSelection = barGroup.selectAll('g')
+        .data(function(d) { return d.counts; })
+          .enter().append("rect")
+          .attr("class", htmlClass)
+          .style("fill", function(d) { return self.color(d.name); })
+          .attr("height", self.y0.rangeBand())
+          .attr("y", function(d) { return self.y1(d.name); })
+          .attr("x", function(d){
+                if (d.x0 == 0){
+                    return 1;
+                } else { 
+                  return self.x(d.x0);
+                } 
+           })
+           .attr("width", function(d) { 
+               if (d.x0 == 0 && d.x1 != 0){
+                   return self.x(d.x1); 
+               } else if ( ( scale === 'log' ) 
+                       && ( self.x(d.x1) - self.x(d.x0) == 0 )) {
+                   return 1;  
+               } else {
+                   return self.x(d.x1) - self.x(d.x0); 
+               }
+           });
+    
+    return barSelection;
+};
+// Sets domains for y0 (y axis),y1 (subdomain of a single tick/group), and x axis
+monarch.chart.barchart.prototype.setXYDomains = function (data, groups, layout) {
+    var self = this;
+    
+    // Recalculate groups rather than operating on all groups
+    // in case some groups have been filtered out by the user
+    var selectedGroups = self.getGroups(data);
+    
+    //Set y0 domain
+    self.y0.domain(data.map(function(d) { return d.id; }));
+    
+    if (typeof layout === 'undefined') {
+        //fallback in case this option has not been passed
+        layout = jQuery(self.html_div + ' input[name=mode]:checked').val();
+    }
+    
+    //TODO improve checking of stacked/grouped configuration
+    if (layout === 'grouped' || groups.length === 1){
+        var xGroupMax = self.getGroupMax(data);
+        self.x.domain([self.x0, xGroupMax]);
+        self.y1.domain(selectedGroups)
+            .rangeRoundBands([0, self.y0.rangeBand()]);
+    } else if (layout === 'stacked'){
+        var xStackMax = self.getStackMax(data);
+        self.x.domain([self.x0, xStackMax]);
+        self.y1.domain(selectedGroups).rangeRoundBands([0,0]);
+    } else {
+        self.y1.domain(selectedGroups)
+            .rangeRoundBands([0, self.y0.rangeBand()]);
+    }
+};
+
+
+/* 
+ * Package: heatmap.js
+ * 
+ * Namespace: monarch.chart.heatmap
+ * 
+ * Class to create heatmaps
+ * 
+ * Parents: chart.js
+ */
+
+// Module and namespace checking.
+if (typeof monarch == 'undefined') { var monarch = {};}
+if (typeof monarch.chart == 'undefined') { monarch.chart = {};}
+
+monarch.chart.heatmap = function(config, html_div, svg_class) {
+    var self = this;
+    monarch.chart.call(this, config, html_div, svg_class);
+    
+    self._is_a = 'heatmap';
+    
+    //this is overridden in chart.setXOrdinalDomain()
+    self.x = d3.scale.ordinal()
+        .rangeRoundBands([0,config.width], .1);
+    
+    self.xAxis = d3.svg.axis()
+        .scale(self.x)
+        .orient("top");
+    
+    //grid color range, hardcode for now
+    /*var gridColors = ['#a5d9d1', '#93d2c8', '#81cabf', '#6fc3b5',
+                      '#5dbbac', '#4bb4a3', '#44A293']; //5% darker: 3c9082  */
+    
+    var gridColors = ['#a5d9d1', '#44A293']; //5% darker: 3c9082
+    self.color = d3.scale.linear()
+        //.domain([0,10])
+        .range(gridColors);
+}
+
+//heatmap extends chart
+monarch.chart.heatmap.prototype = Object.create(monarch.chart.prototype);
+
+//Sets domains for y0 (y axis) and y1 (subdomain of a single tick/group)
+monarch.chart.heatmap.prototype.setXYDomains = function (data, groups, layout) {
+    var self = this;
+    
+    self.y0.domain(data.map(function(d) { return d.id; }));
+    self.y1.domain(groups).rangeRoundBands([0,0]);
+    
+    var xGroupMax = self.getGroupMax(data);
+    self.color.domain([self.x0, xGroupMax]);
+};
+
+// Adds svg:rect element for each color well in the matrix
+monarch.chart.heatmap.prototype.makeColorWells = function (barGroup, htmlClass, scale) {
+    var self = this;
+
+    //The g elements do not yet exist, selectAll creates
+    // a place holder
+    var barSelection = barGroup.selectAll('g')
+          .data(function(d) { return d.counts; })
+          .enter().append("rect")
+          .attr("class", htmlClass)
+          .style("fill", function(d) { 
+              console.log(self.color(d.value));
+              if (d.value === 0) {
+                  return "#E0E0E0";
+              }
+              return self.color(d.value); })
+          .attr("height", self.y0.rangeBand()-2)
+          .attr("y", function(d) { return self.y1(d.name); })
+          .attr("x", function(d){
+                return self.x(d.name) - 13;
+           })
+           .attr("width", 21);
+    
+    return barSelection;
+}
+/* 
+ * Package: tree.js
+ * 
+ * Namespace: monarch.model
+ * 
+ */
+
+// Module and namespace checking.
+if (typeof monarch == 'undefined') { var monarch = {};}
+if (typeof monarch.model == 'undefined') { monarch.model = {};}
+
+/*
+ * Constructor: tree
+ * 
+ * Parameters:
+ *  data - the JSON object as a string in the following format:
+ * {
+     "root": {
+         "id": "HP:0000118",
+         "label": "Phenotypic Abnormality",
+         "children": [
+             {
+                 "id": "HP:0000707",
+                 "label": "Nervous System",
+                 "counts": [
+                     {
+                         "value": 21290,
+                         "name": "Human"
+                     },
+                     {
+                         "value": 38136,
+                         "name": "Mouse"
+                     }
+                 ],
+                 "children": [
+                     {
+                         "label": "Nervous System Morphology",
+                         "id": "HP:0012639",
+                         "counts": [
+                             {
+                                 "value": 7431,
+                                 "name": "Human"
+                             },
+                             {
+                                 "value": 24948,
+                                 "name": "Mouse"
+                             }
+                         ]
+                     }
+                 ]
+             }
+         ]
+     }
+ * }
+ * Returns:
+ *  tree object
+ */
+monarch.model.tree = function(data){
+    var self = this;
+    if (data){
+        self._data = data;
+        self.checkSiblings(data.root.children);
+    } else {
+        self._data = {'root' : {'id' : '', 'label' : ''}};
+    }
+};
+
+//Return entire tree data 
+monarch.model.tree.prototype.getTree = function(){
+    return this._data;
+};
+
+//Set entire tree data 
+monarch.model.tree.prototype.setTree = function(data){
+    self._data = data;
+};
+
+monarch.model.tree.prototype.setRoot = function(node){
+    this._data.root = node;
+};
+
+monarch.model.tree.prototype.getRoot = function(){
+    return this._data.root;
+};
+
+monarch.model.tree.prototype.setRootID = function(id){
+    this._data.root.id = id;
+};
+
+//Return entire tree data 
+monarch.model.tree.prototype.getRootID = function(){
+    return this._data.root.id;
+};
+
+monarch.model.tree.prototype.getRootLabel = function(){
+    return this._data.root.label;
+};
+
+monarch.model.tree.prototype.hasRoot = function(){
+    return (this._data.root && this.getRootID());
+};
+
+monarch.model.tree.prototype.getFirstSiblings = function(){
+    return this._data.root.children;
+};
+
+monarch.model.tree.prototype.setFirstSiblings = function(siblings){
+    this._data.root.children = siblings;
+};
+
+
+monarch.model.tree.prototype.addCountsToNode = function(node_id, counts, parents) {
+    var self = this;
+    
+    //Check that parents lead to something
+    var siblings = self.getDescendants(parents);
+    var index = siblings.map(function(i){return i.id;}).indexOf(node_id);
+    
+    if (index == -1){
+        throw new Error ("Error in locating node given "
+                         + parents + " and ID: " + node_id);
+    } else {
+        siblings[index]['counts'] = counts;
+    }
+    
+    return self;
+};
+
+monarch.model.tree.prototype.addSiblingGroup = function(nodes, parents) {
+    var self = this;
+    
+    //Check that parents lead to something
+    var p_clone = JSON.parse(JSON.stringify(parents));
+    var root = p_clone.pop();
+    
+    if (p_clone.length == 0){
+        self.setFirstSiblings(nodes);
+    } else {
+        var siblings = self.getDescendants(p_clone);
+        var index = siblings.map(function(i){return i.id;}).indexOf(root);
+    
+        if (index == -1){
+            throw new Error ("Error in locating node given "
+                         + p_clone + " and ID: " + root);
+        } else {
+            siblings[index]['children'] = nodes;
+        }
+    }
+    
+    return self;
+};
+
+/*
+ * Function: checkDescendants
+ * 
+ * Check if we have descendants given a list of parents
+ * 
+ * Parameters:
+ *  parents - list of IDs leading to descendant
+ *  checkForData - boolean - optional flag to check if descendants have count data
+ * 
+ * Returns:
+ *  boolean 
+ */
+monarch.model.tree.prototype.checkDescendants = function(parents, checkForData){
+    var self = this;
+    var areThereDescendants = true;
+    var descendants =[];
+    
+    if (typeof parents != 'undefined' && parents.length > 0){
+        
+        if (parents[0] != self.getRootID()){
+            throw new Error ("first id in parent list is not root");
+        }
+        descendants = self.getFirstSiblings();
+        for (var i = 0; i < (parents.length); i++) {
+            //skip root
+            if (i == 0){
+                continue;
+            } else {
+                var branch = self._jumpOneLevel(parents[i], descendants);
+                descendants = branch.children;
+            }
+        }
+        
+    } else {
+        return self.hasRoot();
+    }
+    
+    if (typeof descendants != 'undefined' && descendants.length > 0 
+            && 'id' in descendants[0] 
+            && typeof descendants[0].id != 'undefined'){
+        areThereDescendants = true;
+        
+            if ( checkForData && !('counts' in descendants[0]) ){
+                areThereDescendants = false;
+            }
+    } else {
+        areThereDescendants = false;
+    }
+
+    return areThereDescendants;
+};
+    
+
+/*
+ * Function: getDescendants
+ * 
+ * Return a descendant given a list of IDs leading to the descendant
+ * 
+ * Parameters:
+ *  parents - list of IDs leading to descendant
+ * 
+ * Returns:
+ *  object containing descendant data
+ */
+monarch.model.tree.prototype.getDescendants = function(parents){
+    var self = this;
+    
+    // Start at root
+    var descendants = [];
+    
+    if (typeof parents != 'undefined' && parents.length > 0){
+        
+        if (parents[0] != self.getRootID()){
+            throw new Error ("first id in parent list is not root");
+        }
+
+        parents.forEach( function(r,i){
+            //skip root
+            if (i == 0){
+              descendants = self.getFirstSiblings();
+            } else {
+                var branch = self._jumpOneLevel(r, descendants);
+                descendants = branch.children;
+            }
+        });
+    } else {
+        descendants = self.getRoot();
+    }
+    
+    return descendants;
+};
+
+/*
+ * Function: _jumpOneLevel
+ * 
+ * Return a descendant given a list of IDs leading to the descendant
+ * 
+ * Parameters:
+ *  id - id to move into on branch
+ *  branch - branch of a tree
+ * 
+ * Returns:
+ *  object containing branch of data where id is the root
+ */
+monarch.model.tree.prototype._jumpOneLevel = function(id, branch){
+    branch = branch.filter(function(i){return i.id == id;});
+    if (branch.length > 1){
+        throw new Error ("Cannot disambiguate id: " + id);
+    } else if (branch.length == 0){
+        throw new Error ("Error in locating descendants given id: "+id);
+    }
+    return branch[0];
+}
+
+//TODO improve checking
+// Just checks top level of tree
+monarch.model.tree.prototype.checkSiblings = function(siblings){
+    if (typeof siblings === 'undefined'){
+        throw new Error ("tree object is undefined");
+    }
+  
+    siblings.forEach(function (r){
+        //Check ID
+        if (r.id == null){
+            throw new Error ("ID is not defined in self.data object");
+        }
+        if (r.label == null){
+            r.label = r.id;
+        }
+        if (r.counts == null){
+            //throw new Error ("No statistics for "+r.id+" in self.data object");
+        } else {
+            r.counts.forEach(function (i){
+                if (i.value == null){
+                    r.value = 0;
+                }
+            });
+        }
+    });
+    return self;
+};
+/* 
+ * Package: tree_builder.js
+ * 
+ * Namespace: monarch.builder
+ * 
+ */
+
+// Module and namespace checking.
+if (typeof monarch == 'undefined') { var monarch = {};}
+if (typeof monarch.builder == 'undefined') { monarch.builder = {};}
+
+/*
+ * Constructor: tree_builder
+ * 
+ * Parameters:
+ *    solr_url - Base URL for Solr service
+ *    scigraph_url - Base URL of SciGraph REST API
+ *    golr_conf - Configuration for golr_manager
+ *    tree - monarch.model.tree object
+ *    
+ *  TODO this needs to be updated to use the latest golr manager:
+ *  https://github.com/berkeleybop/bbop-manager-golr
+ */
+monarch.builder.tree_builder = function(solr_url, scigraph_url, golr_conf, tree, config){
+    var self = this;
+    self.solr_url = solr_url;
+    // Turn into official golr conf object
+    self.golr_conf = new bbop.golr.conf(golr_conf);
+    self.scigraph_url = scigraph_url;
+    if (typeof tree === 'undefined') {
+        self.tree = new monarch.model.tree();
+    } else {
+        self.tree = tree;
+    }
+    if (config == null || typeof config == 'undefined'){
+        self.config = self.getDefaultConfig();
+    } else {
+        self.config = config;
+    }
+    
+};
+
+monarch.builder.tree_builder.prototype.build_tree = function(parents, final_function, error_function){
+    var self = this;
+    
+    var checkForData = true;
+    
+    // Check tree to see if we have classes, if so skip getting ontology
+    // structure from SciGraph
+    if (!self.tree.checkDescendants(parents)){
+        //get data from ontology
+        var final_callback = function(){
+            self.getCountsForSiblings(parents, final_function, error_function
+        )};
+        self.addOntologyToTree(parents[parents.length-1], 1, parents, final_callback, error_function);
+    } else if (!self.tree.checkDescendants(parents, checkForData)){
+        self.getCountsForSiblings(parents, final_function, error_function);
+    } else {
+        final_function();
+    }
+    
+};
+
+/*
+ * Function: addOntologyToTree
+ * 
+ * Parameters:
+ *    id - string, root id as curie or url
+ *    depth - string or int, how many levels to traverse
+ *    
+ * Returns:
+ *    object, maybe should be monarch.model.tree?
+ */
+monarch.builder.tree_builder.prototype.addOntologyToTree = function(id, depth, parents, final_function, error_function){
+    var self = this;
+    
+    // Some Hardcoded options for scigraph
+    var direction = 'INCOMING';
+    var relationship = 'subClassOf';
+    
+    var query = self.setGraphNeighborsUrl(id, depth, relationship, direction);
+    
+    jQuery.ajax({
+        url: query,
+        jsonp: "callback",
+        dataType: "json",
+        error: function(){
+          console.log('ERROR: looking at: ' + query);
+          if (typeof error_function != 'undefined'){
+              error_function();
+          }
+        },
+        success: function(data) {
+            var graph = new bbop.model.graph();
+            graph.load_json(data);
+            var child_nodes = graph.get_child_nodes(id);
+            var siblings = child_nodes.map(function(i){
+                return {'id' : i.id(),
+                        'label' : self.processLabel(i.label())};
+            });
+            self.tree.addSiblingGroup(siblings, parents)
+            if (typeof final_function != 'undefined'){
+                final_function();
+            }
+        }
+    });
+
+};
+
+/*
+ * Function: getCountsForClass
+ * 
+ * Parameters:
+ *    id -
+ *    id_field -
+ *    species -
+ *    filters -
+ *    
+ * Returns:
+ *    node object
+ */
+monarch.builder.tree_builder.prototype.setGolrManager = function(golr_manager, id, id_field, filter, personality){
+    var self = this;
+    var config = self.config;
+    
+    golr_manager.reset_query_filters();
+    golr_manager.add_query_filter(config.id_field, id, ['*']);
+    golr_manager.set_results_count(0);
+    golr_manager.lite(true);
+    
+    if (config.filter instanceof Array && config.filter.length > 0){
+        config.filter.forEach(function(val){
+            if (val != null && val.field && val.value){
+                golr_manager.add_query_filter(val.field, val.value, ['*']);
+            }
+        });
+    }
+    
+    if (config.personality != null){
+        golr_manager.set_personality(config.personality);
+    }
+    return golr_manager;
+};
+
+/*
+ * Function: getCountsForClass
+ * 
+ * Parameters:
+ *    id -
+ *    id_field -
+ *    species -
+ *    filters -
+ *    personality - 
+ *    facet - 
+ *    parents - 
+ *    final_function -
+ *    
+ * Returns:
+ *    JQuery Ajax Function
+ */
+monarch.builder.tree_builder.prototype.getCountsForSiblings = function(parents, final_function, error_function){
+    var self = this;
+    
+    var siblings = self.tree.getDescendants(parents);
+
+    var promises = [];
+    var success_callbacks = [];
+    var error_callbacks = [];
+    
+    siblings.map(function(i){return i.id;}).forEach( function(i) {
+        var ajax = self._getCountsForClass(i, parents);
+        promises.push(jQuery.ajax(ajax.qurl,ajax.jq_vars));
+        success_callbacks.push(ajax.jq_vars['success']);
+        error_callbacks.push(ajax.jq_vars['error']);
+    });
+    
+    jQuery.when.apply(jQuery,promises).done(success_callbacks).done(function(){
+        if (typeof final_function != 'undefined'){
+            final_function();
+        }
+    }).fail(error_callbacks).fail(function (){
+        if (typeof error_function != 'undefined'){
+            error_function();
+        }
+    });
+    
+};
+
+/*
+ * Function: getCountsForClass
+ * 
+ * Parameters:
+ *    id -
+ *    id_field -
+ *    species -
+ *    filters -
+ *    personality -
+ *    facet - 
+ *    parents -
+ *    
+ * Returns:
+ *    JQuery Ajax Function
+ */
+monarch.builder.tree_builder.prototype._getCountsForClass = function(id, parents){
+    var self = this;
+    var node = {"id":id, "counts": []};
+    
+    var golr_manager = new bbop.golr.manager.jquery(self.solr_url, self.golr_conf);
+    
+    //First lets override the update function
+    golr_manager.update = function(callback_type, rows, start){
+        
+        // Get "parents" url first.
+        var parent_update = bbop.golr.manager.prototype.update;
+        var qurl = parent_update.call(this, callback_type, rows, start);
+
+        if( ! this.safety() ){
+        
+        // Setup JSONP for Solr and jQuery ajax-specific parameters.
+        this.jq_vars['success'] = this._callback_type_decider; // decide & run
+        this.jq_vars['error'] = this._run_error_callbacks; // run error cbs
+
+        return {qurl: qurl, jq_vars: this.jq_vars};
+        }
+    };
+    
+    /* No idea why I need to override this to comment out checking
+     * for response.success(), hoping the error callbacks will 
+     * catch any errors
+     */
+    golr_manager._callback_type_decider = function(json_data){
+        var response = new bbop.golr.response(json_data);
+
+            // 
+            if( ! response.success() ){
+                //throw new Error("Unsuccessful response from golr server!");
+            }else{
+                var cb_type = response.callback_type();
+                if( cb_type == 'reset' ){
+                    golr_manager._run_reset_callbacks(json_data);
+                }else if( cb_type == 'search' ){
+                    golr_manager._run_search_callbacks(json_data);
+                }else{
+                    throw new Error("Unknown callback type!");
+                }
+            }
+        };
+    
+    golr_manager = self.setGolrManager(golr_manager, id);
+    
+    var makeDataNode = function(golr_response){
+        var counts = [];
+        if (typeof self.config.facet != 'undefined'){
+            var facet_counts = golr_response.facet_field(self.config.facet);
+            facet_counts.forEach(function(i){
+                if (typeof self.getTaxonMap()[i[0]] != 'undefined') {
+                    var index = counts.map(function(d){return d.name}).indexOf(self.getTaxonMap()[i[0]]);
+                    if (index != -1){
+                        counts[index]['value'] += i[1];
+                    } else {
+                        counts.push({
+                               'name': self.getTaxonMap()[i[0]],
+                               'value' : i[1]
+                        });
+                    }
+                } else {
+                    var index = counts.map(function(d){return d.name}).indexOf('Other');
+                    if (index != -1){
+                        counts[index]['value'] += i[1];
+                    } else {
+                        counts.push({
+                            'name': 'Other',
+                            'value' : i[1]
+                        });
+                    }
+                }
+            });
+        } else if (typeof self.config.single_group != 'undefined') {
+            counts.push({
+                'name': self.config.single_group,
+                'value' : golr_response.total_documents()
+            });
+        } else {
+            throw new Error("Either facet or single_group required in config");
+        }
+        self.tree.addCountsToNode(id,counts,parents)
+    }
+    var register_id = 'data_counts_'+id;
+    
+    golr_manager.register('search', register_id, makeDataNode);
+    return golr_manager.update('search');
+    
+};
+
+
+/*
+ * Function: setGraphNeighborsUrl
+ * 
+ * Construct SciGraph URL for Rest Server
+ * 
+ * Parameters:
+ *    id - string, root id as curie or url
+ *    depth - string or int, how many levels to traverse 
+ *    relationship - string, relationship between terns, defaults as subClassOf
+ *    direction - string, direction of relationship, INCOMING,
+ *                        OUTGOING, or BOTH will work
+ *                        
+ * Returns: 
+ *    string
+ */
+monarch.builder.tree_builder.prototype.setGraphNeighborsUrl = function(id, depth, relationship, direction){
+    var self = this;
+    if (typeof relationship === 'undefined') {
+        relationship = "subClassOf";
+    }
+    if (typeof direction === 'undefined') {
+        direction = 'INCOMING';
+    }
+    var url = self.scigraph_url + 'graph/neighbors/' + id + '.json?depth='
+              + depth + '&blankNodes=false&relationshipType='
+              + relationship + '&direction=' + direction + '&project=*';
+    
+    return url;
+};
+
+/*
+ * Function: convertGraphToTree
+ * 
+ * Edit label to make more readable
+ * 
+ * Parameters:
+ *    graph - bbop.model.graph
+ *    root - root object
+ *    
+ * Returns:
+ *    monarch.model.tree
+ */
+monarch.builder.tree_builder.prototype.convertGraphToTree = function(graph, root){
+    var self = this;
+    if (!graph._is_a === 'bbop.model.graph'){
+        throw new Error ("Input is not a bbop.model.graph");
+    }
+    
+    var tree = new monarch.model.tree();
+    
+};
+
+/*
+ * Function: processLabel
+ * 
+ * Edit label to make more readable
+ * 
+ * Parameters:
+ *    label - string, label to be processed
+ *    
+ * Returns:
+ *    string
+ */
+monarch.builder.tree_builder.prototype.processLabel = function(label){
+    if (typeof label != 'undefined'){
+        label = label.replace(/Abnormality of (the )?/, '');
+        label = label.replace(/abnormal(\(ly\))? /, '');
+        label = label.replace(/ phenotype$/, '');
+    
+        label = label.replace(/\b'?[a-z]/g, function() {
+            if (!/'/.test(arguments[0])) {
+                return arguments[0].toUpperCase()
+            } else {
+                return arguments[0];
+            }
+        });
+    }
+    
+    return label;
+};
+
+// Hardcoded taxon map
+monarch.builder.tree_builder.prototype.getTaxonMap = function(){
+    return {
+        "NCBITaxon:10090" : "Mouse",
+        "NCBITaxon:9606" : "Human",
+        "NCBITaxon:7955" : "Zebrafish",
+        "NCBITaxon:57486" : "Mouse",
+        "NCBITaxon:39442" : "Mouse",
+        "NCBITaxon:10092" : "Mouse",
+        "NCBITaxon:10091" : "Mouse",
+        "NCBITaxon:9823" : "Pig",
+        "NCBITaxon:10116" : "Rat",
+        "NCBITaxon:9913" : "Cow",
+        "NCBITaxon:6239" : "Worm",
+        "NCBITaxon:7227" : "Fly",
+        //"NCBITaxon:8364" : "Frog",
+        "NCBITaxon:9544" : "Monkey",
+        "NCBITaxon:9258" : "Platypus",
+        "NCBITaxon:9685" : "Cat",
+        //"NCBITaxon:9986" : "Rabit",
+        "NCBITaxon:9615" : "Dog",
+        "NCBITaxon:9031" : "Chicken"
+    };
+};
+
+monarch.builder.tree_builder.prototype.addFilter = function(filter_args){
+    var self = this;
+    self.config.filter.push(filter_args);
+}
+
+
+monarch.builder.tree_builder.prototype.getDefaultConfig = function(){
+    var config = {
+            id_field : 'object_closure',
+            personality : 'dovechart',
+            filter : [{ field: 'subject_category', value: 'gene' }],
+    }
+    return config;
+}
+
 /* 
  * Package: dovechart.js
  * 
@@ -1628,1176 +2806,4 @@ monarch.dovechart.prototype.getDefaultConfig = function(){
             useCrumbShape : true
     };
     return defaultConfiguration;
-};/* 
- * Package: tree.js
- * 
- * Namespace: monarch.model
- * 
- */
-
-// Module and namespace checking.
-if (typeof monarch == 'undefined') { var monarch = {};}
-if (typeof monarch.model == 'undefined') { monarch.model = {};}
-
-/*
- * Constructor: tree
- * 
- * Parameters:
- *  data - the JSON object as a string in the following format:
- * {
-     "root": {
-         "id": "HP:0000118",
-         "label": "Phenotypic Abnormality",
-         "children": [
-             {
-                 "id": "HP:0000707",
-                 "label": "Nervous System",
-                 "counts": [
-                     {
-                         "value": 21290,
-                         "name": "Human"
-                     },
-                     {
-                         "value": 38136,
-                         "name": "Mouse"
-                     }
-                 ],
-                 "children": [
-                     {
-                         "label": "Nervous System Morphology",
-                         "id": "HP:0012639",
-                         "counts": [
-                             {
-                                 "value": 7431,
-                                 "name": "Human"
-                             },
-                             {
-                                 "value": 24948,
-                                 "name": "Mouse"
-                             }
-                         ]
-                     }
-                 ]
-             }
-         ]
-     }
- * }
- * Returns:
- *  tree object
- */
-monarch.model.tree = function(data){
-    var self = this;
-    if (data){
-        self._data = data;
-        self.checkSiblings(data.root.children);
-    } else {
-        self._data = {'root' : {'id' : '', 'label' : ''}};
-    }
 };
-
-//Return entire tree data 
-monarch.model.tree.prototype.getTree = function(){
-    return this._data;
-};
-
-//Set entire tree data 
-monarch.model.tree.prototype.setTree = function(data){
-    self._data = data;
-};
-
-monarch.model.tree.prototype.setRoot = function(node){
-    this._data.root = node;
-};
-
-monarch.model.tree.prototype.getRoot = function(){
-    return this._data.root;
-};
-
-monarch.model.tree.prototype.setRootID = function(id){
-    this._data.root.id = id;
-};
-
-//Return entire tree data 
-monarch.model.tree.prototype.getRootID = function(){
-    return this._data.root.id;
-};
-
-monarch.model.tree.prototype.getRootLabel = function(){
-    return this._data.root.label;
-};
-
-monarch.model.tree.prototype.hasRoot = function(){
-    return (this._data.root && this.getRootID());
-};
-
-monarch.model.tree.prototype.getFirstSiblings = function(){
-    return this._data.root.children;
-};
-
-monarch.model.tree.prototype.setFirstSiblings = function(siblings){
-    this._data.root.children = siblings;
-};
-
-
-monarch.model.tree.prototype.addCountsToNode = function(node_id, counts, parents) {
-    var self = this;
-    
-    //Check that parents lead to something
-    var siblings = self.getDescendants(parents);
-    var index = siblings.map(function(i){return i.id;}).indexOf(node_id);
-    
-    if (index == -1){
-        throw new Error ("Error in locating node given "
-                         + parents + " and ID: " + node_id);
-    } else {
-        siblings[index]['counts'] = counts;
-    }
-    
-    return self;
-};
-
-monarch.model.tree.prototype.addSiblingGroup = function(nodes, parents) {
-    var self = this;
-    
-    //Check that parents lead to something
-    var p_clone = JSON.parse(JSON.stringify(parents));
-    var root = p_clone.pop();
-    
-    if (p_clone.length == 0){
-        self.setFirstSiblings(nodes);
-    } else {
-        var siblings = self.getDescendants(p_clone);
-        var index = siblings.map(function(i){return i.id;}).indexOf(root);
-    
-        if (index == -1){
-            throw new Error ("Error in locating node given "
-                         + p_clone + " and ID: " + root);
-        } else {
-            siblings[index]['children'] = nodes;
-        }
-    }
-    
-    return self;
-};
-
-/*
- * Function: checkDescendants
- * 
- * Check if we have descendants given a list of parents
- * 
- * Parameters:
- *  parents - list of IDs leading to descendant
- *  checkForData - boolean - optional flag to check if descendants have count data
- * 
- * Returns:
- *  boolean 
- */
-monarch.model.tree.prototype.checkDescendants = function(parents, checkForData){
-    var self = this;
-    var areThereDescendants = true;
-    var descendants =[];
-    
-    if (typeof parents != 'undefined' && parents.length > 0){
-        
-        if (parents[0] != self.getRootID()){
-            throw new Error ("first id in parent list is not root");
-        }
-        descendants = self.getFirstSiblings();
-        for (var i = 0; i < (parents.length); i++) {
-            //skip root
-            if (i == 0){
-                continue;
-            } else {
-                var branch = self._jumpOneLevel(parents[i], descendants);
-                descendants = branch.children;
-            }
-        }
-        
-    } else {
-        return self.hasRoot();
-    }
-    
-    if (typeof descendants != 'undefined' && descendants.length > 0 
-            && 'id' in descendants[0] 
-            && typeof descendants[0].id != 'undefined'){
-        areThereDescendants = true;
-        
-            if ( checkForData && !('counts' in descendants[0]) ){
-                areThereDescendants = false;
-            }
-    } else {
-        areThereDescendants = false;
-    }
-
-    return areThereDescendants;
-};
-    
-
-/*
- * Function: getDescendants
- * 
- * Return a descendant given a list of IDs leading to the descendant
- * 
- * Parameters:
- *  parents - list of IDs leading to descendant
- * 
- * Returns:
- *  object containing descendant data
- */
-monarch.model.tree.prototype.getDescendants = function(parents){
-    var self = this;
-    
-    // Start at root
-    var descendants = [];
-    
-    if (typeof parents != 'undefined' && parents.length > 0){
-        
-        if (parents[0] != self.getRootID()){
-            throw new Error ("first id in parent list is not root");
-        }
-
-        parents.forEach( function(r,i){
-            //skip root
-            if (i == 0){
-              descendants = self.getFirstSiblings();
-            } else {
-                var branch = self._jumpOneLevel(r, descendants);
-                descendants = branch.children;
-            }
-        });
-    } else {
-        descendants = self.getRoot();
-    }
-    
-    return descendants;
-};
-
-/*
- * Function: _jumpOneLevel
- * 
- * Return a descendant given a list of IDs leading to the descendant
- * 
- * Parameters:
- *  id - id to move into on branch
- *  branch - branch of a tree
- * 
- * Returns:
- *  object containing branch of data where id is the root
- */
-monarch.model.tree.prototype._jumpOneLevel = function(id, branch){
-    branch = branch.filter(function(i){return i.id == id;});
-    if (branch.length > 1){
-        throw new Error ("Cannot disambiguate id: " + id);
-    } else if (branch.length == 0){
-        throw new Error ("Error in locating descendants given id: "+id);
-    }
-    return branch[0];
-}
-
-//TODO improve checking
-// Just checks top level of tree
-monarch.model.tree.prototype.checkSiblings = function(siblings){
-    if (typeof siblings === 'undefined'){
-        throw new Error ("tree object is undefined");
-    }
-  
-    siblings.forEach(function (r){
-        //Check ID
-        if (r.id == null){
-            throw new Error ("ID is not defined in self.data object");
-        }
-        if (r.label == null){
-            r.label = r.id;
-        }
-        if (r.counts == null){
-            //throw new Error ("No statistics for "+r.id+" in self.data object");
-        } else {
-            r.counts.forEach(function (i){
-                if (i.value == null){
-                    r.value = 0;
-                }
-            });
-        }
-    });
-    return self;
-};/* 
- * Package: tree_builder.js
- * 
- * Namespace: monarch.builder
- * 
- */
-
-// Module and namespace checking.
-if (typeof monarch == 'undefined') { var monarch = {};}
-if (typeof monarch.builder == 'undefined') { monarch.builder = {};}
-
-/*
- * Constructor: tree_builder
- * 
- * Parameters:
- *    solr_url - Base URL for Solr service
- *    scigraph_url - Base URL of SciGraph REST API
- *    golr_conf - Configuration for golr_manager
- *    tree - monarch.model.tree object
- *    
- *  TODO this needs to be updated to use the latest golr manager:
- *  https://github.com/berkeleybop/bbop-manager-golr
- */
-monarch.builder.tree_builder = function(solr_url, scigraph_url, golr_conf, tree, config){
-    var self = this;
-    self.solr_url = solr_url;
-    // Turn into official golr conf object
-    self.golr_conf = new bbop.golr.conf(golr_conf);
-    self.scigraph_url = scigraph_url;
-    if (typeof tree === 'undefined') {
-        self.tree = new monarch.model.tree();
-    } else {
-        self.tree = tree;
-    }
-    if (config == null || typeof config == 'undefined'){
-        self.config = self.getDefaultConfig();
-    } else {
-        self.config = config;
-    }
-    
-};
-
-monarch.builder.tree_builder.prototype.build_tree = function(parents, final_function, error_function){
-    var self = this;
-    
-    var checkForData = true;
-    
-    // Check tree to see if we have classes, if so skip getting ontology
-    // structure from SciGraph
-    if (!self.tree.checkDescendants(parents)){
-        //get data from ontology
-        var final_callback = function(){
-            self.getCountsForSiblings(parents, final_function, error_function
-        )};
-        self.addOntologyToTree(parents[parents.length-1], 1, parents, final_callback, error_function);
-    } else if (!self.tree.checkDescendants(parents, checkForData)){
-        self.getCountsForSiblings(parents, final_function, error_function);
-    } else {
-        final_function();
-    }
-    
-};
-
-/*
- * Function: addOntologyToTree
- * 
- * Parameters:
- *    id - string, root id as curie or url
- *    depth - string or int, how many levels to traverse
- *    
- * Returns:
- *    object, maybe should be monarch.model.tree?
- */
-monarch.builder.tree_builder.prototype.addOntologyToTree = function(id, depth, parents, final_function, error_function){
-    var self = this;
-    
-    // Some Hardcoded options for scigraph
-    var direction = 'INCOMING';
-    var relationship = 'subClassOf';
-    
-    var query = self.setGraphNeighborsUrl(id, depth, relationship, direction);
-    
-    jQuery.ajax({
-        url: query,
-        jsonp: "callback",
-        dataType: "json",
-        error: function(){
-          console.log('ERROR: looking at: ' + query);
-          if (typeof error_function != 'undefined'){
-              error_function();
-          }
-        },
-        success: function(data) {
-            var graph = new bbop.model.graph();
-            graph.load_json(data);
-            var child_nodes = graph.get_child_nodes(id);
-            var siblings = child_nodes.map(function(i){
-                return {'id' : i.id(),
-                        'label' : self.processLabel(i.label())};
-            });
-            self.tree.addSiblingGroup(siblings, parents)
-            if (typeof final_function != 'undefined'){
-                final_function();
-            }
-        }
-    });
-
-};
-
-/*
- * Function: getCountsForClass
- * 
- * Parameters:
- *    id -
- *    id_field -
- *    species -
- *    filters -
- *    
- * Returns:
- *    node object
- */
-monarch.builder.tree_builder.prototype.setGolrManager = function(golr_manager, id, id_field, filter, personality){
-    var self = this;
-    var config = self.config;
-    
-    golr_manager.reset_query_filters();
-    golr_manager.add_query_filter(config.id_field, id, ['*']);
-    golr_manager.set_results_count(0);
-    golr_manager.lite(true);
-    
-    if (config.filter instanceof Array && config.filter.length > 0){
-        config.filter.forEach(function(val){
-            if (val != null && val.field && val.value){
-                golr_manager.add_query_filter(val.field, val.value, ['*']);
-            }
-        });
-    }
-    
-    if (config.personality != null){
-        golr_manager.set_personality(config.personality);
-    }
-    return golr_manager;
-};
-
-/*
- * Function: getCountsForClass
- * 
- * Parameters:
- *    id -
- *    id_field -
- *    species -
- *    filters -
- *    personality - 
- *    facet - 
- *    parents - 
- *    final_function -
- *    
- * Returns:
- *    JQuery Ajax Function
- */
-monarch.builder.tree_builder.prototype.getCountsForSiblings = function(parents, final_function, error_function){
-    var self = this;
-    
-    var siblings = self.tree.getDescendants(parents);
-
-    var promises = [];
-    var success_callbacks = [];
-    var error_callbacks = [];
-    
-    siblings.map(function(i){return i.id;}).forEach( function(i) {
-        var ajax = self._getCountsForClass(i, parents);
-        promises.push(jQuery.ajax(ajax.qurl,ajax.jq_vars));
-        success_callbacks.push(ajax.jq_vars['success']);
-        error_callbacks.push(ajax.jq_vars['error']);
-    });
-    
-    jQuery.when.apply(jQuery,promises).done(success_callbacks).done(function(){
-        if (typeof final_function != 'undefined'){
-            final_function();
-        }
-    }).fail(error_callbacks).fail(function (){
-        if (typeof error_function != 'undefined'){
-            error_function();
-        }
-    });
-    
-};
-
-/*
- * Function: getCountsForClass
- * 
- * Parameters:
- *    id -
- *    id_field -
- *    species -
- *    filters -
- *    personality -
- *    facet - 
- *    parents -
- *    
- * Returns:
- *    JQuery Ajax Function
- */
-monarch.builder.tree_builder.prototype._getCountsForClass = function(id, parents){
-    var self = this;
-    var node = {"id":id, "counts": []};
-    
-    var golr_manager = new bbop.golr.manager.jquery(self.solr_url, self.golr_conf);
-    
-    //First lets override the update function
-    golr_manager.update = function(callback_type, rows, start){
-        
-        // Get "parents" url first.
-        var parent_update = bbop.golr.manager.prototype.update;
-        var qurl = parent_update.call(this, callback_type, rows, start);
-
-        if( ! this.safety() ){
-        
-        // Setup JSONP for Solr and jQuery ajax-specific parameters.
-        this.jq_vars['success'] = this._callback_type_decider; // decide & run
-        this.jq_vars['error'] = this._run_error_callbacks; // run error cbs
-
-        return {qurl: qurl, jq_vars: this.jq_vars};
-        }
-    };
-    
-    /* No idea why I need to override this to comment out checking
-     * for response.success(), hoping the error callbacks will 
-     * catch any errors
-     */
-    golr_manager._callback_type_decider = function(json_data){
-        var response = new bbop.golr.response(json_data);
-
-            // 
-            if( ! response.success() ){
-                //throw new Error("Unsuccessful response from golr server!");
-            }else{
-                var cb_type = response.callback_type();
-                if( cb_type == 'reset' ){
-                    golr_manager._run_reset_callbacks(json_data);
-                }else if( cb_type == 'search' ){
-                    golr_manager._run_search_callbacks(json_data);
-                }else{
-                    throw new Error("Unknown callback type!");
-                }
-            }
-        };
-    
-    golr_manager = self.setGolrManager(golr_manager, id);
-    
-    var makeDataNode = function(golr_response){
-        var counts = [];
-        if (typeof self.config.facet != 'undefined'){
-            var facet_counts = golr_response.facet_field(self.config.facet);
-            facet_counts.forEach(function(i){
-                if (typeof self.getTaxonMap()[i[0]] != 'undefined') {
-                    var index = counts.map(function(d){return d.name}).indexOf(self.getTaxonMap()[i[0]]);
-                    if (index != -1){
-                        counts[index]['value'] += i[1];
-                    } else {
-                        counts.push({
-                               'name': self.getTaxonMap()[i[0]],
-                               'value' : i[1]
-                        });
-                    }
-                } else {
-                    var index = counts.map(function(d){return d.name}).indexOf('Other');
-                    if (index != -1){
-                        counts[index]['value'] += i[1];
-                    } else {
-                        counts.push({
-                            'name': 'Other',
-                            'value' : i[1]
-                        });
-                    }
-                }
-            });
-        } else if (typeof self.config.single_group != 'undefined') {
-            counts.push({
-                'name': self.config.single_group,
-                'value' : golr_response.total_documents()
-            });
-        } else {
-            throw new Error("Either facet or single_group required in config");
-        }
-        self.tree.addCountsToNode(id,counts,parents)
-    }
-    var register_id = 'data_counts_'+id;
-    
-    golr_manager.register('search', register_id, makeDataNode);
-    return golr_manager.update('search');
-    
-};
-
-
-/*
- * Function: setGraphNeighborsUrl
- * 
- * Construct SciGraph URL for Rest Server
- * 
- * Parameters:
- *    id - string, root id as curie or url
- *    depth - string or int, how many levels to traverse 
- *    relationship - string, relationship between terns, defaults as subClassOf
- *    direction - string, direction of relationship, INCOMING,
- *                        OUTGOING, or BOTH will work
- *                        
- * Returns: 
- *    string
- */
-monarch.builder.tree_builder.prototype.setGraphNeighborsUrl = function(id, depth, relationship, direction){
-    var self = this;
-    if (typeof relationship === 'undefined') {
-        relationship = "subClassOf";
-    }
-    if (typeof direction === 'undefined') {
-        direction = 'INCOMING';
-    }
-    var url = self.scigraph_url + 'graph/neighbors/' + id + '.json?depth='
-              + depth + '&blankNodes=false&relationshipType='
-              + relationship + '&direction=' + direction + '&project=*';
-    
-    return url;
-};
-
-/*
- * Function: convertGraphToTree
- * 
- * Edit label to make more readable
- * 
- * Parameters:
- *    graph - bbop.model.graph
- *    root - root object
- *    
- * Returns:
- *    monarch.model.tree
- */
-monarch.builder.tree_builder.prototype.convertGraphToTree = function(graph, root){
-    var self = this;
-    if (!graph._is_a === 'bbop.model.graph'){
-        throw new Error ("Input is not a bbop.model.graph");
-    }
-    
-    var tree = new monarch.model.tree();
-    
-};
-
-/*
- * Function: processLabel
- * 
- * Edit label to make more readable
- * 
- * Parameters:
- *    label - string, label to be processed
- *    
- * Returns:
- *    string
- */
-monarch.builder.tree_builder.prototype.processLabel = function(label){
-    if (typeof label != 'undefined'){
-        label = label.replace(/Abnormality of (the )?/, '');
-        label = label.replace(/abnormal(\(ly\))? /, '');
-        label = label.replace(/ phenotype$/, '');
-    
-        label = label.replace(/\b'?[a-z]/g, function() {
-            if (!/'/.test(arguments[0])) {
-                return arguments[0].toUpperCase()
-            } else {
-                return arguments[0];
-            }
-        });
-    }
-    
-    return label;
-};
-
-// Hardcoded taxon map
-monarch.builder.tree_builder.prototype.getTaxonMap = function(){
-    return {
-        "NCBITaxon:10090" : "Mouse",
-        "NCBITaxon:9606" : "Human",
-        "NCBITaxon:7955" : "Zebrafish",
-        "NCBITaxon:57486" : "Mouse",
-        "NCBITaxon:39442" : "Mouse",
-        "NCBITaxon:10092" : "Mouse",
-        "NCBITaxon:10091" : "Mouse",
-        "NCBITaxon:9823" : "Pig",
-        "NCBITaxon:10116" : "Rat",
-        "NCBITaxon:9913" : "Cow",
-        "NCBITaxon:6239" : "Worm",
-        "NCBITaxon:7227" : "Fly",
-        //"NCBITaxon:8364" : "Frog",
-        "NCBITaxon:9544" : "Monkey",
-        "NCBITaxon:9258" : "Platypus",
-        "NCBITaxon:9685" : "Cat",
-        //"NCBITaxon:9986" : "Rabit",
-        "NCBITaxon:9615" : "Dog",
-        "NCBITaxon:9031" : "Chicken"
-    };
-};
-
-monarch.builder.tree_builder.prototype.addFilter = function(filter_args){
-    var self = this;
-    self.config.filter.push(filter_args);
-}
-
-
-monarch.builder.tree_builder.prototype.getDefaultConfig = function(){
-    var config = {
-            id_field : 'object_closure',
-            personality : 'dovechart',
-            filter : [{ field: 'subject_category', value: 'gene' }],
-    }
-    return config;
-}
-/* 
- * Package: chart.js
- * 
- * Namespace: monarch.chart
- * 
- * Generic chart class, a chart being defined as a chart
- * with an x and y axis (so ruling out some chart types
- * such as pie charts)
- * 
- * Defaults are set for horizontal charts,
- * y0 and x are d3 scales which convert
- * a series of data points to a position
- * on the graph axes, and y1 which converts
- * a series of groups to a position within
- * a single y axis tick mark (for grouped barcharts)
- * using domain and range functions
- * API docs for these functions/objects can be found here
- * https://github.com/mbostock/d3/wiki/Quantitative-Scales
- * https://github.com/mbostock/d3/wiki/Ordinal-Scales
- * 
- * Subclasses: barchart.js
- */
-
-// Module and namespace checking.
-if (typeof monarch == 'undefined') { var monarch = {};}
-
-monarch.chart = function(config, html_div, svg_class){
-    var self = this;
-
-
-    
-    
-    /* self.y0
-     * initialized as a scale object,
-     * for example a d3.scale.ordinal(), 
-     * which manages a set of discrete values
-     * 
-     * y0 is used to set the y axis domain
-     * and positioning of elements such as 
-     * horizontal bars
-     */
-    self.y0 = d3.scale.ordinal()
-        .rangeRoundBands([0,config.height], .1);
-    
-    /* self.y1
-     * initialized as a scale object,
-     * for example a d3.scale.ordinal()
-     * 
-     * y1 is used for setting positioning within a single group
-     * in a grouped barchart view, 
-     * see monarch.chart.barchart.setXYDomains() and 
-     * monarch.chart.barchart.makeHorizontalGroupedBars() and
-     */
-    self.y1 = d3.scale.ordinal();
-    
-    // Lower value of the x axis domain
-    // Defaults to 0, and is set to .1 for log scales
-    self.x0 = 0;
-
-    /* self.x is a scale object, as
-     * a default a d3.scale.linear which is both
-     * an object and a function,
-     * for example, this is used to set
-     * the domain and range of the x axis and convert
-     * count values to rect width attributes in barcharts
-     */ 
-    self.x = d3.scale.linear()
-        .range([self.x0, config.width]);
-
-    self.xAxis = d3.svg.axis()
-        .scale(self.x)
-        .orient("top")
-        .tickFormat(d3.format(".2s"));
-
-    self.yAxis = d3.svg.axis()
-        .scale(self.y0)
-        .orient("left");
-    
-    self.html_div = html_div;
-
-    /* Selects the g element for the entire chart, 
-     * the direct child of the svg element
-     * this requires setting up a DOM with the structure
-     *  <div class="html_div">
-     *    <svg>
-     *      <g>
-     *      
-     * TODO: initialize DOM if this fails
-     */
-    self.svg = d3.select(html_div).select('.'+svg_class).select('g');
-};
-
-/* 
- * Initialize/set X ordinal scale
- */
-monarch.chart.prototype.setXOrdinalDomain = function (groups, width) {
-    var self = this;
-
-    self.x = d3.scale.ordinal()
-        .domain(groups)
-        .rangeRoundBands([0,width], .1);
-    
-    self.xAxis = d3.svg.axis()
-        .scale(self.x)
-        .orient("top");
-}
-
-monarch.chart.prototype.setXTicks = function(config) {
-    var self = this;
-    //Set x axis tick marks
-    self.svg.append("g")
-        .attr("class", "x axis")
-        .call(self.xAxis)
-        .style("font-size", config.xFontSize)
-        .append("text")
-        .attr("transform", "rotate(0)")
-        .attr("y", config.xAxisPos.y)
-        .attr("dx", config.xAxisPos.dx)
-        .attr("dy", "0em")
-        .style("text-anchor", "end")
-        .style("font-size",config.xLabelFontSize)
-        .text(config.xAxisLabel);
-    
-    return self;
-};
-
-monarch.chart.prototype.setYTicks = function() {
-    var self = this;
-    //Set Y axis tick marks
-    self.svg.append("g")
-        .attr("class", "y axis")
-        .call(self.yAxis);
-    
-    return self;
-}
-
-monarch.chart.prototype.setLinearXScale = function(width) {
-    var self = this;
-    self.x0 = 0;
-    
-    self.x = d3.scale.linear()
-        .range([self.x0, width]);
-
-    self.xAxis = d3.svg.axis()
-        .scale(self.x)
-        .orient("top")
-        .tickFormat(d3.format(".2s"));
-    
-    return self;
-};
-
-monarch.chart.prototype.setLogXScale = function(width) {
-    var self = this;
-    self.x0 = .1;
-    
-    self.x = d3.scale.log()
-        .range([self.x0, width]);
-
-    self.xAxis = d3.svg.axis()
-        .scale(self.x)
-        .orient("top")
-        .ticks(5);
-    
-    return self;
-};
-
-monarch.chart.prototype.transitionYAxisToNewScale = function(duration) {
-    var self = this;
-    self.svg.transition().duration(duration)
-        .select(".y.axis").call(self.yAxis);
-};
-
-monarch.chart.prototype.transitionXAxisToNewScale = function(duration) {
-    var self = this;
-    self.svg.transition()
-        .duration(duration).select(".x.axis").call(self.xAxis);
-};
-
-//Adjusts the y axis labels in relation to axis ticks
-monarch.chart.prototype.setYAxisTextSpacing = function(dx){
-    var self = this;
-    self.svg.select(".y.axis")
-      .selectAll("text")
-      .attr("dx", dx);
-};
-
-//Adjusts the y axis labels in relation to axis ticks
-monarch.chart.prototype.setXAxisLabels = function(degreesRotation, x, y, fontSize){
-    var self = this;
-    self.svg.select('.x.axis')
-        .selectAll('text')
-        .attr("transform", "rotate(" + degreesRotation + ")" )
-        .attr("x", x )
-        .attr("y", y )
-        .attr("dy", "-3" )
-        .style("font-size", fontSize) //Set the same size as y axis
-        .style("text-anchor", "start");
-};
-
-/*
- * Create a svg g element for each y axis tick mark
- * On a concrete level this is used to group rectangles for
- * different views (stacked/grouped bars, heatmaps)
- * 
- * Returns: d3.selection
- */
-monarch.chart.prototype.setGroupPositioning = function (data, config, htmlClass) {
-    var self = this;
-
-    var groupPos = self.svg.selectAll()
-       .data(data)
-       .enter().append("svg:g")
-       .attr("class", htmlClass)
-       .attr("transform", function(d) { return "translate(0," + self.y0(d.id) + ")"; })
-       .on("click", function(d){
-           if (config.isYLabelURL){
-               document.location.href = config.yLabelBaseURL + d.id;
-           }
-       });
-    return groupPos;
-};
-
-/* Get X Axis limit for grouped configuration
- * Could be refactored into a class that defines
- * a group of siblings
- */
-monarch.chart.prototype.getGroupMax = function(data){
-    return d3.max(data, function(d) { 
-        return d3.max(d.counts, function(d) { return d.value; });
-    });
-};
-
-/* Get X Axis limit for stacked configuration
- * Could be refactored into a class that defines
- * a group of siblings
- */
-monarch.chart.prototype.getStackMax = function(data){
-    return d3.max(data, function(d) { 
-        return d3.max(d.counts, function(d) { return d.x1; });
-    }); 
-};
-
-monarch.chart.prototype.getGroups = function(data) {
-    var groups = [];
-    var unique = {};
-    for (var i=0, len=data.length; i<len; i++) { 
-        for (var j=0, cLen=data[i].counts.length; j<cLen; j++) { 
-            unique[ data[i].counts[j].name ] =1;
-        }
-    }
-    groups = Object.keys(unique);
-    return groups;
-};/* 
- * Package: barchart.js
- * 
- * Namespace: monarch.chart.barchart
- * 
- * Class to create different types of barcharts,
- * horizontal stacked, grouped, and simple barcharts
- * are implemented
- * 
- * Parents: chart.js
- */
-
-// Module and namespace checking.
-if (typeof monarch == 'undefined') { var monarch = {};}
-if (typeof monarch.chart == 'undefined') { monarch.chart = {};}
-
-monarch.chart.barchart = function(config, html_div, svg_class) {
-    var self = this;
-    monarch.chart.call(this, config, html_div, svg_class);
-    
-    self._is_a = 'barchart';
-    
-    //Bar colors
-    var barColors = config.color.bars;
-    self.color = d3.scale.ordinal()
-        .range(Object.keys(barColors).map(function(k) { return barColors[k] }));
-}
-
-//barchart extends chart
-monarch.chart.barchart.prototype = Object.create(monarch.chart.prototype);
-
-/*
- * Makes svg rectangles in a grouped bar layout
- * Args
- *   - barGroup: d3.selection of each svg g element to hold the bars, with
- *               data bound to each element
- *               for example the output from chart.setGroupPositioning()
- * 
- * Returns d3.selection
- */
-monarch.chart.barchart.prototype.makeHorizontalGroupedBars = function(barGroup, htmlClass, scale) {
-    var self = this;
-    
-    //The g elements do not yet exists, selectAll creates
-    // a place holder
-    var barSelection = barGroup.selectAll('g')
-        .data(function(d) { return d.counts; })
-        .enter().append("rect")
-        .attr("class", htmlClass)
-        .style("fill", function(d) { return self.color(d.name); })
-        .attr("height", self.y1.rangeBand())
-        .attr("y", function(d) { return self.y1(d.name); })
-        .attr("x", 1)
-        .attr("width", function(d) { 
-            if ((scale === 'log' ) && ( d.value == 0 )){
-              return 1;
-            } else {
-              return self.x(d.value); 
-            }
-         });
-    
-    return barSelection;
-};
-
-/*
- * Makes horizontal svg rectangles in a stacked bar layout
- * Args
- *   - barGroup: d3.selection of each svg g element to hold the bars, with
- *               data bound to each element
- *               for example the output from chart.setGroupPositioning()
- * 
- * Returns d3.selection
- */
-monarch.chart.barchart.prototype.makeHorizontalStackedBars = function(barGroup, htmlClass, scale) {
-    var self = this;
-    
-    //The g elements do not yet exists, selectAll creates
-    // a place holder
-    var barSelection = barGroup.selectAll('g')
-        .data(function(d) { return d.counts; })
-          .enter().append("rect")
-          .attr("class", htmlClass)
-          .style("fill", function(d) { return self.color(d.name); })
-          .attr("height", self.y0.rangeBand())
-          .attr("y", function(d) { return self.y1(d.name); })
-          .attr("x", function(d){
-                if (d.x0 == 0){
-                    return 1;
-                } else { 
-                  return self.x(d.x0);
-                } 
-           })
-           .attr("width", function(d) { 
-               if (d.x0 == 0 && d.x1 != 0){
-                   return self.x(d.x1); 
-               } else if ( ( scale === 'log' ) 
-                       && ( self.x(d.x1) - self.x(d.x0) == 0 )) {
-                   return 1;  
-               } else {
-                   return self.x(d.x1) - self.x(d.x0); 
-               }
-           });
-    
-    return barSelection;
-};
-// Sets domains for y0 (y axis),y1 (subdomain of a single tick/group), and x axis
-monarch.chart.barchart.prototype.setXYDomains = function (data, groups, layout) {
-    var self = this;
-    
-    // Recalculate groups rather than operating on all groups
-    // in case some groups have been filtered out by the user
-    var selectedGroups = self.getGroups(data);
-    
-    //Set y0 domain
-    self.y0.domain(data.map(function(d) { return d.id; }));
-    
-    if (typeof layout === 'undefined') {
-        //fallback in case this option has not been passed
-        layout = jQuery(self.html_div + ' input[name=mode]:checked').val();
-    }
-    
-    //TODO improve checking of stacked/grouped configuration
-    if (layout === 'grouped' || groups.length === 1){
-        var xGroupMax = self.getGroupMax(data);
-        self.x.domain([self.x0, xGroupMax]);
-        self.y1.domain(selectedGroups)
-            .rangeRoundBands([0, self.y0.rangeBand()]);
-    } else if (layout === 'stacked'){
-        var xStackMax = self.getStackMax(data);
-        self.x.domain([self.x0, xStackMax]);
-        self.y1.domain(selectedGroups).rangeRoundBands([0,0]);
-    } else {
-        self.y1.domain(selectedGroups)
-            .rangeRoundBands([0, self.y0.rangeBand()]);
-    }
-};
-
-/* 
- * Package: heatmap.js
- * 
- * Namespace: monarch.chart.heatmap
- * 
- * Class to create heatmaps
- * 
- * Parents: chart.js
- */
-
-// Module and namespace checking.
-if (typeof monarch == 'undefined') { var monarch = {};}
-if (typeof monarch.chart == 'undefined') { monarch.chart = {};}
-
-monarch.chart.heatmap = function(config, html_div, svg_class) {
-    var self = this;
-    monarch.chart.call(this, config, html_div, svg_class);
-    
-    self._is_a = 'heatmap';
-    
-    //this is overridden in chart.setXOrdinalDomain()
-    self.x = d3.scale.ordinal()
-        .rangeRoundBands([0,config.width], .1);
-    
-    self.xAxis = d3.svg.axis()
-        .scale(self.x)
-        .orient("top");
-    
-    //grid color range, hardcode for now
-    /*var gridColors = ['#a5d9d1', '#93d2c8', '#81cabf', '#6fc3b5',
-                      '#5dbbac', '#4bb4a3', '#44A293']; //5% darker: 3c9082  */
-    
-    var gridColors = ['#a5d9d1', '#44A293']; //5% darker: 3c9082
-    self.color = d3.scale.linear()
-        //.domain([0,10])
-        .range(gridColors);
-}
-
-//heatmap extends chart
-monarch.chart.heatmap.prototype = Object.create(monarch.chart.prototype);
-
-//Sets domains for y0 (y axis) and y1 (subdomain of a single tick/group)
-monarch.chart.heatmap.prototype.setXYDomains = function (data, groups, layout) {
-    var self = this;
-    
-    self.y0.domain(data.map(function(d) { return d.id; }));
-    self.y1.domain(groups).rangeRoundBands([0,0]);
-    
-    var xGroupMax = self.getGroupMax(data);
-    self.color.domain([self.x0, xGroupMax]);
-};
-
-// Adds svg:rect element for each color well in the matrix
-monarch.chart.heatmap.prototype.makeColorWells = function (barGroup, htmlClass, scale) {
-    var self = this;
-
-    //The g elements do not yet exist, selectAll creates
-    // a place holder
-    var barSelection = barGroup.selectAll('g')
-          .data(function(d) { return d.counts; })
-          .enter().append("rect")
-          .attr("class", htmlClass)
-          .style("fill", function(d) { 
-              console.log(self.color(d.value));
-              if (d.value === 0) {
-                  return "#E0E0E0";
-              }
-              return self.color(d.value); })
-          .attr("height", self.y0.rangeBand()-2)
-          .attr("y", function(d) { return self.y1(d.name); })
-          .attr("x", function(d){
-                return self.x(d.name) - 13;
-           })
-           .attr("width", 21);
-    
-    return barSelection;
-}
